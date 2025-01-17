@@ -95,28 +95,29 @@ impl UnivariatePolynomialDense {
             coefficients: product,
         }
     }
-}
 
-// input -> [y0,y1,y2], where the x values represent the powers of the variables in ascending order
-fn interpolate(input: Vec<f32>) -> UnivariatePolynomialDense {
-    let x_values: Vec<f32> = (0..input.len()).map(|x| x as f32).collect();
-    println!("------------");
-    println!("{:?}", x_values);
+    // input -> [y0,y1,y2], where the x values represent the powers of the variables in ascending order
+    fn interpolate(input: Vec<f32>) -> UnivariatePolynomialDense {
+        let x_values: Vec<f32> = (0..input.len()).map(|x| x as f32).collect();
+        println!("------------");
+        println!("{:?}", x_values);
 
-    // polyniomial sum :: but we set it to the zero polynomial at first or additive identity
-    let mut polynomial_sum: UnivariatePolynomialDense = UnivariatePolynomialDense::new(vec![0.0]);
+        // polyniomial sum :: but we set it to the zero polynomial at first or additive identity
+        let mut polynomial_sum: UnivariatePolynomialDense =
+            UnivariatePolynomialDense::new(vec![0.0]);
 
-    for (i, x) in x_values.iter().enumerate() {
-        println!("----l{x}--------");
-        let single_basis_poly = lagrange_basis(x_values.clone(), *x, input[i]);
-        polynomial_sum = polynomial_sum.polynomial_addition(&single_basis_poly);
+        for (i, x) in x_values.iter().enumerate() {
+            println!("----l{x}--------");
+            let single_basis_poly = lagrange_basis(x_values.clone(), *x, input[i]);
+            polynomial_sum = polynomial_sum.polynomial_addition(&single_basis_poly);
+        }
+
+        println!("--------------------------");
+        println!("-----The polynomial-------");
+        println!("{:?}", polynomial_sum.coefficients);
+
+        polynomial_sum
     }
-
-    println!("--------------------------");
-    println!("-----The polynomial-------");
-    println!("{:?}", polynomial_sum.coefficients);
-
-    polynomial_sum
 }
 
 fn lagrange_basis(
@@ -151,37 +152,9 @@ fn lagrange_basis(
 }
 
 fn main() {
-    // println!("Call function here");
-    //powers of x::      0    1    2
-    //                  [5.0, 2.0, 3.0]
-    // let univariate_poly1 = UnivariatePolynomialDense::new(vec![5.0, 2.0, 3.0]);
-
-    // let univariate_poly2 = UnivariatePolynomialDense::new(vec![0.0]);
-
-    // let sum = univariate_poly2
-    //     .polynomial_addition(&univariate_poly1)
-    //     .polynomial_addition(&univariate_poly1);
-    // println!(
-    //     "coefficients: {:?}, degree : {}",
-    //     sum.coefficients,
-    //     sum.degree()
-    // );
-    // let scalar_prod = prod.scalar_multiplication(2);
-    // println!(
-    //     "coefficients: {:?}, degree : {}",
-    //     scalar_prod.coefficients,
-    //     scalar_prod.degree()
-    // );
-
-    // println!("---------------");
-    // let poly1 = UnivariatePolynomialDense::new(vec![-1.0, 1.0]);
-    // let poly2 = UnivariatePolynomialDense::new(vec![-1.0, 1.0]);
-    // let poly3 = UnivariatePolynomialDense::new(vec![-1.0]);
-    // let poly_prod = poly1
-    //     .polynomial_multiplication(&poly2)
-    //     .polynomial_multiplication(&poly3);
-    // println!("prod: {:?}", poly_prod.coefficients);
-
-    // call the interpolate function
-    interpolate(vec![5.0, 8.0, 17.0]);
+        // call the interpolate function
+    UnivariatePolynomialDense::interpolate(vec![2.0, 4.0, 10.0]);
 }
+
+
+// write tests
