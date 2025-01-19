@@ -1,0 +1,9 @@
+[package]
+name = "shamir"
+version = "0.1.0"
+path = "src/lib.rs"
+edition = "2021"
+
+[dependencies]
+univariate = {path = "../univariate"}
+rand = "0.8.5"
