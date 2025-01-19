@@ -3,5 +3,5 @@
 version = 3
 
 [[package]]
-name = "zk-research"
+name = "univariate"
 version = "0.1.0"
