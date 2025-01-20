@@ -10,6 +10,7 @@ pub fn share_secret<F: PrimeField>(secret: F, threshold: u64, shares_no: u64) ->
     let mut y_values: Vec<F> = vec![secret];
 
     let mut rng = rand::thread_rng();
+
     for _i in 0..threshold - 1 {
         let y: F = F::rand(&mut rng);
         y_values.push(y as F);
@@ -29,13 +30,42 @@ pub fn share_secret<F: PrimeField>(secret: F, threshold: u64, shares_no: u64) ->
     shares
 }
 
+pub fn share_secret_with_password<F: PrimeField>(
+    secret: F,
+    threshold: u64,
+    shares_no: u64,
+    password: F,
+) -> Vec<(F, F)> {
+    let mut rng = rand::thread_rng();
+    let mut x_values: Vec<F> = vec![password];
+    let mut y_values: Vec<F> = vec![secret];
+
+    for _i in 0..threshold - 1 {
+        let y: F = F::rand(&mut rng);
+        let x: F = F::rand(&mut rng);
+        y_values.push(y as F);
+        x_values.push(x as F);
+    }
+
+    let poly = UnivariatePolynomialDense::interpolate(x_values, y_values);
+
+    let mut shares: Vec<(F, F)> = Vec::new();
+
+    for _i in 0..shares_no {
+        let x: F = F::rand(&mut rng);
+        let y = poly.evaluate(x as F);
+        shares.push((x as F, y as F));
+    }
+    shares
+}
+
 // recovers the secret from the shares
-pub fn recover_secret<F: PrimeField>(secret_shares: Vec<(F, F)>) -> F {
+pub fn recover_secret<F: PrimeField>(secret_shares: Vec<(F, F)>, password: F) -> F {
     let x_values: Vec<F> = secret_shares.iter().map(|(x, _y)| *x as F).collect();
     let y_values: Vec<F> = secret_shares.iter().map(|(_x, y)| *y as F).collect();
     let resulting_poly = UnivariatePolynomialDense::interpolate(x_values, y_values);
     println!("Resulting poly: {:?}", resulting_poly.coefficients);
-    resulting_poly.evaluate(F::zero())
+    resulting_poly.evaluate(password)
 }
 
 #[cfg(test)]
@@ -60,13 +90,25 @@ mod tests {
     }
 
     #[test]
-    fn test_recover_secret() {
+    fn test_recover_secret_success() {
         let (secret, threshold, shares_no) = return_values();
         let shares = share_secret(secret, threshold, shares_no);
         let first_4_shares: Vec<(Fq, Fq)> = shares.iter().take(4).cloned().collect();
-        let recovered_secret = recover_secret(first_4_shares);
+        let password = Fq::from(0);
+
+        let recovered_secret = recover_secret(first_4_shares, password);
         assert_eq!(secret, recovered_secret);
     }
 
-    // fn test_recover_secret() {}
+    #[test]
+    fn test_interpolate_share_secret() {
+        let (secret, threshold, shares_no) = return_values();
+        let password = Fq::from(0);
+        let shares = share_secret_with_password(secret, threshold, shares_no, password);
+
+        let first_4_shares: Vec<(Fq, Fq)> = shares.iter().take(4).cloned().collect();
+        let recovered_secret = recover_secret(first_4_shares, password);
+
+        assert_eq!(secret, recovered_secret);
+    }
 }
