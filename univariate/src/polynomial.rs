@@ -2,8 +2,8 @@ use std::f64;
 
 /// A struct representing a univariate polynomial in dense form
 pub struct UnivariatePolynomialDense {
-    degree: u32,
-    coefficients: Vec<f64>,
+    pub degree: u32,
+    pub coefficients: Vec<f64>,
 }
 
 impl UnivariatePolynomialDense {
@@ -37,6 +37,9 @@ impl UnivariatePolynomialDense {
         // logic
         let mut val: f64 = 0.0;
         for (i, value) in self.coefficients.iter().enumerate() {
+            if x == 0.0{
+                return self.coefficients[0];
+            }
             if *value != 0.0 {
                 val += value * x.powf(i as f64);
             }
@@ -181,6 +184,12 @@ mod tests {
     fn test_evaluate() {
         let poly = poly1();
         assert_eq!(poly.evaluate(2.0), 17.0);
+    }
+
+    #[test]
+    fn test_evaluate_at_zero() {
+        let poly = poly1();
+        assert_eq!(poly.evaluate(0.0), 1.0);
     }
 
     #[test]
