@@ -7,3 +7,5 @@ edition = "2021"
 [dependencies]
 univariate = {path = "../univariate"}
 rand = "0.8.5"
+ark-ff = "0.5.0"
+ark-bn254 = "0.5.0"

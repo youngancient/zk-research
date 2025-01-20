@@ -1,18 +1,17 @@
-use std::f64;
-
+use ark_ff::PrimeField;
 /// A struct representing a univariate polynomial in dense form
-pub struct UnivariatePolynomialDense {
+pub struct UnivariatePolynomialDense<F: PrimeField> {
     pub degree: u32,
-    pub coefficients: Vec<f64>,
+    pub coefficients: Vec<F>,
 }
 
-impl UnivariatePolynomialDense {
+impl<F: PrimeField> UnivariatePolynomialDense<F> {
     /// Creates a new `UnivariatePolynomialDense` with the given coefficients.
     ///
     /// # Arguments
     ///
     /// * `coefficients` - A vector of coefficients, where the i-th element is the coefficient for x^i.
-    pub fn new(coefficients: Vec<f64>) -> Self {
+    pub fn new(coefficients: Vec<F>) -> Self {
         let degree: u32 = if coefficients.is_empty() {
             0
         } else {
@@ -33,15 +32,15 @@ impl UnivariatePolynomialDense {
     /// # Returns
     ///
     /// The value of the polynomial at `x`.
-    pub fn evaluate(&self, x: f64) -> f64 {
+    pub fn evaluate(&self, x: F) -> F {
         // logic
-        let mut val: f64 = 0.0;
+        let mut val: F = F::zero();
         for (i, value) in self.coefficients.iter().enumerate() {
-            if x == 0.0{
+            if x == F::zero() {
                 return self.coefficients[0];
             }
-            if *value != 0.0 {
-                val += value * x.powf(i as f64);
+            if *value != F::zero() {
+                val += *value * x.pow([i as u64]);
             }
         }
         val
@@ -50,12 +49,12 @@ impl UnivariatePolynomialDense {
     // polynomial addition
     pub fn polynomial_addition(
         &self,
-        other: &UnivariatePolynomialDense,
-    ) -> UnivariatePolynomialDense {
-        let mut origin_coefficients: Vec<f64> = Vec::new();
-        let mut other_cofficients: Vec<f64> = Vec::new();
+        other: &UnivariatePolynomialDense<F>,
+    ) -> UnivariatePolynomialDense<F> {
+        let mut origin_coefficients: Vec<F> = Vec::new();
+        let mut other_cofficients: Vec<F> = Vec::new();
 
-        let mut result_coefficients: Vec<f64> = Vec::new();
+        let mut result_coefficients: Vec<F> = Vec::new();
 
         let degree: u32;
 
@@ -70,7 +69,7 @@ impl UnivariatePolynomialDense {
         }
         for (i, value) in origin_coefficients.iter().enumerate() {
             if i < other_cofficients.len() {
-                result_coefficients.push(value + other_cofficients[i]);
+                result_coefficients.push(*value + other_cofficients[i]);
             } else {
                 result_coefficients.push(*value);
             }
@@ -85,12 +84,12 @@ impl UnivariatePolynomialDense {
 
     pub fn polynomial_multiplication(
         &self,
-        other: &UnivariatePolynomialDense,
-    ) -> UnivariatePolynomialDense {
+        other: &UnivariatePolynomialDense<F>,
+    ) -> UnivariatePolynomialDense<F> {
         let m = self.coefficients.len();
         let n = other.coefficients.len();
         let no_of_coefficients = m + n - 1;
-        let mut prod_array: Vec<f64> = vec![0.0; (no_of_coefficients) as usize];
+        let mut prod_array: Vec<F> = vec![F::zero(); (no_of_coefficients) as usize];
         for i in 0..m as usize {
             for j in 0..n as usize {
                 prod_array[i + j] += self.coefficients[i] * other.coefficients[j];
@@ -102,10 +101,10 @@ impl UnivariatePolynomialDense {
 
     // polynomial scalar multiplication
 
-    pub fn scalar_multiplication(&self, scalar: f64) -> UnivariatePolynomialDense {
-        let mut product: Vec<f64> = Vec::new();
+    pub fn scalar_multiplication(&self, scalar: F) -> UnivariatePolynomialDense<F> {
+        let mut product: Vec<F> = Vec::new();
         for val in self.coefficients.iter() {
-            product.push(val * (scalar as f64))
+            product.push(*val * (scalar as F))
         }
         UnivariatePolynomialDense {
             degree: self.degree,
@@ -114,19 +113,19 @@ impl UnivariatePolynomialDense {
     }
 
     pub fn lagrange_basis(
-        interpolating_set: Vec<f64>,
-        focus_point: f64,
-        y_value: f64,
-    ) -> UnivariatePolynomialDense {
+        interpolating_set: Vec<F>,
+        focus_point: F,
+        y_value: F,
+    ) -> UnivariatePolynomialDense<F> {
         // set basis polynomial to constant 1
-        let mut basis_poly_numerator: UnivariatePolynomialDense =
-            UnivariatePolynomialDense::new(vec![1.0]);
+        let mut basis_poly_numerator: UnivariatePolynomialDense<F> =
+            UnivariatePolynomialDense::new(vec![F::one()]);
 
         for x_value in interpolating_set.iter() {
             // for the numerator
             // (x - 1)(x - 2)...(x - n)
             if *x_value != focus_point {
-                let univariate_poly = UnivariatePolynomialDense::new(vec![-(*x_value), 1.0]);
+                let univariate_poly = UnivariatePolynomialDense::new(vec![-(*x_value), F::one()]);
                 basis_poly_numerator =
                     basis_poly_numerator.polynomial_multiplication(&univariate_poly);
             }
@@ -142,14 +141,14 @@ impl UnivariatePolynomialDense {
     }
 
     // y_values -> [x0,x1,x2 ..., xn] [y0,y1,y2, ...yn]
-    pub fn interpolate(x_values: Vec<f64>, y_values: Vec<f64>) -> UnivariatePolynomialDense {
-        // let x_values: Vec<f64> = (0..y_values.len()).map(|x| x as f64).collect();
+    pub fn interpolate(x_values: Vec<F>, y_values: Vec<F>) -> UnivariatePolynomialDense<F> {
+        // let x_values: Vec<F> = (0..y_values.len()).map(|x| x as F).collect();
         if x_values.len() != y_values.len() {
             panic!("The number of x values must be equal to the number of y values");
         }
         // polyniomial sum :: but we set it to the zero polynomial at first or additive identity
-        let mut polynomial_sum: UnivariatePolynomialDense =
-            UnivariatePolynomialDense::new(vec![0.0]);
+        let mut polynomial_sum: UnivariatePolynomialDense<F> =
+            UnivariatePolynomialDense::new(vec![F::zero()]);
 
         for (i, x) in x_values.iter().enumerate() {
             let single_basis_poly =
@@ -165,31 +164,35 @@ impl UnivariatePolynomialDense {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ark_bn254::Fq;
 
-    fn poly1() -> UnivariatePolynomialDense {
-        UnivariatePolynomialDense::new(vec![1.0, 2.0, 3.0])
+    fn poly1() -> UnivariatePolynomialDense<Fq> {
+        UnivariatePolynomialDense::new(vec![Fq::from(1), Fq::from(2), Fq::from(3)])
     }
-    fn poly2() -> UnivariatePolynomialDense {
-        UnivariatePolynomialDense::new(vec![5.0, 2.0])
+    fn poly2() -> UnivariatePolynomialDense<Fq> {
+        UnivariatePolynomialDense::new(vec![Fq::from(5), Fq::from(2)])
     }
 
     #[test]
     fn test_create_polynomial() {
         let poly = poly1();
         assert_eq!(poly.degree, 2);
-        assert_eq!(poly.coefficients, vec![1.0, 2.0, 3.0]);
+        assert_eq!(
+            poly.coefficients,
+            vec![Fq::from(1), Fq::from(2), Fq::from(3)]
+        );
     }
 
     #[test]
     fn test_evaluate() {
         let poly = poly1();
-        assert_eq!(poly.evaluate(2.0), 17.0);
+        assert_eq!(poly.evaluate(Fq::from(2)), Fq::from(17));
     }
 
     #[test]
     fn test_evaluate_at_zero() {
         let poly = poly1();
-        assert_eq!(poly.evaluate(0.0), 1.0);
+        assert_eq!(poly.evaluate(Fq::from(0)), Fq::from(1));
     }
 
     #[test]
@@ -198,7 +201,7 @@ mod tests {
         let poly_2 = poly2();
         assert_eq!(
             poly_1.polynomial_addition(&poly_2).coefficients,
-            vec![6.0, 4.0, 3.0]
+            vec![Fq::from(6), Fq::from(4), Fq::from(3)]
         );
     }
 
@@ -208,24 +211,29 @@ mod tests {
         let poly_2 = poly2();
         assert_eq!(
             poly_1.polynomial_multiplication(&poly_2).coefficients,
-            vec![5.0, 12.0, 19.0, 6.0]
+            vec![Fq::from(5), Fq::from(12), Fq::from(19), Fq::from(6)]
         );
     }
 
     #[test]
     fn test_scalar_mul() {
         let poly_1 = poly1();
-        let scalar = 2.0;
+        let scalar = Fq::from(2);
         assert_eq!(
             poly_1.scalar_multiplication(scalar).coefficients,
-            vec![2.0, 4.0, 6.0]
+            vec![Fq::from(2), Fq::from(4), Fq::from(6)]
         );
     }
 
     #[test]
     fn test_interpolate() {
-        let result =
-            UnivariatePolynomialDense::interpolate(vec![0.0, 1.0, 2.0], vec![2.0, 4.0, 10.0]);
-        assert_eq!(result.coefficients, vec![2.0, 0.0, 2.0]);
+        let result = UnivariatePolynomialDense::interpolate(
+            vec![Fq::from(0), Fq::from(1), Fq::from(2)],
+            vec![Fq::from(2), Fq::from(4), Fq::from(10)],
+        );
+        assert_eq!(
+            result.coefficients,
+            vec![Fq::from(2), Fq::from(0), Fq::from(2)]
+        );
     }
 }
