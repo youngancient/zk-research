@@ -11,14 +11,14 @@ pub fn share_secret(secret: f64, threshold: u64, shares_no: u64) -> Vec<(f64, f6
     let mut y_values: Vec<f64> = vec![secret];
 
     let mut rng = rand::thread_rng();
-    for _i in 0..threshold {
-        let y: f64 = rng.gen();
+    for _i in 0..threshold-1 {
+        let y: f64 = rng.gen_range(1000..1000000000) as f64;
         y_values.push(y as f64);
     }
 
     let poly = UnivariatePolynomialDense::new(y_values);
 
-    println!("{:?}",poly.coefficients);
+    println!("Actual polynomial: {:?}",poly.coefficients);
     
     let mut shares: Vec<(f64, f64)> = Vec::new();
     
@@ -61,8 +61,7 @@ mod tests {
     fn test_recover_secret() {
         let (secret, threshold, shares_no) = return_values();
         let shares = share_secret(secret, threshold, shares_no);
-        let first_4_shares: Vec<(f64, f64)> = shares.iter().take(4).cloned().collect();
-        println!("{:?}", first_4_shares);
+        let first_4_shares: Vec<(f64, f64)> = shares.iter().take(3).cloned().collect();
         let recovered_secret = recover_secret(first_4_shares);
         assert_eq!(secret, recovered_secret);
     }
