@@ -1,7 +1,7 @@
 use ark_ff::PrimeField;
 /// A struct representing a univariate polynomial in dense form
 pub struct UnivariatePolynomialDense<F: PrimeField> {
-    pub degree: u32,
+    pub degree: u64,
     pub coefficients: Vec<F>,
 }
 
@@ -12,10 +12,10 @@ impl<F: PrimeField> UnivariatePolynomialDense<F> {
     ///
     /// * `coefficients` - A vector of coefficients, where the i-th element is the coefficient for x^i.
     pub fn new(coefficients: Vec<F>) -> Self {
-        let degree: u32 = if coefficients.is_empty() {
+        let degree: u64 = if coefficients.is_empty() {
             0
         } else {
-            (coefficients.len() - 1) as u32
+            (coefficients.len() - 1) as u64
         };
         Self {
             degree,
@@ -56,7 +56,7 @@ impl<F: PrimeField> UnivariatePolynomialDense<F> {
 
         let mut result_coefficients: Vec<F> = Vec::new();
 
-        let degree: u32;
+        let degree: u64;
 
         if self.degree > other.degree {
             origin_coefficients = self.coefficients.clone();

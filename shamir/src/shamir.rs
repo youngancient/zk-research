@@ -48,6 +48,9 @@ pub fn share_secret_with_password<F: PrimeField>(
     }
 
     let poly = UnivariatePolynomialDense::interpolate(x_values, y_values);
+    if poly.degree != threshold - 1 {
+        panic!("Polynomial interpolation failed");
+    }
 
     let mut shares: Vec<(F, F)> = Vec::new();
 
