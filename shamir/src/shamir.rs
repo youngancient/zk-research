@@ -1,6 +1,6 @@
 use ark_ff::PrimeField;
 use rand;
-use univariate::polynomial::UnivariatePolynomialDense;
+use univariate::dense_polynomial::UnivariatePolynomialDense;
 // this fn takes in a secret, threshold, and shares_no, it returns a vector of tuples representing the shares
 // instead of making the secret a point at 0, we can make it a point at any x value, where x is the password
 // todo: implement the function
