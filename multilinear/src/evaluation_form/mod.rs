@@ -57,7 +57,7 @@ impl<F: PrimeField> EvaluationForm<F> {
     }
 
     // the order of the variables is important -> [a, b, c, d,...] for f(a,b,c,d,...)
-    pub fn evaluate(&self, variables: Vec<F>) {
+    pub fn evaluate(&self, variables: Vec<F>) -> F {
         if variables.len() != self.number_of_variables as usize {
             panic!("Invalid number of points")
         }
@@ -67,6 +67,7 @@ impl<F: PrimeField> EvaluationForm<F> {
         //     result.eval_form = result.partial_evaluate(i + 1, variables[i as usize]);
         // }
         // println!("Result: {:?}", result.eval_form);
+        todo!();
     }
 }
 
@@ -254,6 +255,24 @@ pub mod tests {
         assert_eq!(
             result,
             vec![Fq::from(0), Fq::from(9), Fq::from(0), Fq::from(11)]
+        );
+    }
+
+    #[test]
+    fn test_evaluate() {
+        let eval_form = EvaluationForm::new(vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(3),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+            Fq::from(5),
+        ]);
+        assert_eq!(
+            eval_form.evaluate(vec![Fq::from(4), Fq::from(2), Fq::from(3)]),
+            Fq::from(34)
         );
     }
 }
