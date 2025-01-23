@@ -1,7 +1,6 @@
 use ark_ff::PrimeField;
 use std::collections::HashSet;
 
-#[derive(Clone)]
 pub struct EvaluationForm<F: PrimeField> {
     pub number_of_variables: u32,
     pub eval_form: Vec<F>,
