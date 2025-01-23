@@ -215,4 +215,45 @@ pub mod tests {
         let pairs_for_c = find_pairs_with_xor(&boolean_hypercube_of_2_vars, c_target);
         assert_eq!(pairs_for_c, vec![(0, 1), (10, 11), (100, 101), (110, 111)]);
     }
+
+    #[test]
+    fn test_interpolate_and_evaluate() {
+        let y_values = (Fq::from(1), Fq::from(2));
+        let r = Fq::from(3);
+        assert_eq!(interpolate_and_evaluate(y_values, r), Fq::from(4));
+    }
+
+    #[test]
+    fn test_partial_evaluate_1vars() {
+        let eval_form = EvaluationForm::new(vec![Fq::from(4), Fq::from(7)]);
+        let result = eval_form.partial_evaluate(1, Fq::from(3));
+        assert_eq!(result, vec![Fq::from(13)]);
+    }
+
+    #[test]
+    fn test_partial_evaluate_2vars() {
+        let eval_form =
+            EvaluationForm::new(vec![Fq::from(0), Fq::from(3), Fq::from(2), Fq::from(5)]);
+        let result = eval_form.partial_evaluate(1, Fq::from(2));
+        assert_eq!(result, vec![Fq::from(4), Fq::from(7)]);
+    }
+
+    #[test]
+    fn test_partial_evaluate_3vars() {
+        let eval_form = EvaluationForm::new(vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(3),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+            Fq::from(5),
+        ]);
+        let result = eval_form.partial_evaluate(3, Fq::from(3));
+        assert_eq!(
+            result,
+            vec![Fq::from(0), Fq::from(9), Fq::from(0), Fq::from(11)]
+        );
+    }
 }
