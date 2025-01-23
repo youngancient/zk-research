@@ -51,5 +51,7 @@ mod tests {
         // f(7) = 21
 
         assert_eq!(poly.evaluate(Fq::from(7)), Fq::from(21));
+
+        // assert_eq!(poly.evaluate(Fq::from(8)), Fq::from(34));
     }
 }

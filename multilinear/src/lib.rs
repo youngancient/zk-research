@@ -1,2 +1,2 @@
-pub mod dense_multilinear;
-pub mod sparse_multilinear;
+pub mod evaluation_form;
+pub mod coefficient_form;

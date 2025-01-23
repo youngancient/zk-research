@@ -24,7 +24,6 @@ pub fn share_secret<F: PrimeField>(secret: F, threshold: u64, shares_no: u64) ->
 
     let mut shares: Vec<(F, F)> = Vec::new();
 
-
     for _i in 0..shares_no {
         let mut x: F = F::rand(&mut rng);
         // because the password is at 0, we can't have a share at point 0
@@ -44,8 +43,8 @@ pub fn share_secret_with_password<F: PrimeField>(
     password: F,
 ) -> Vec<(F, F)> {
     let mut rng = rand::thread_rng();
-    let mut x_values: Vec<F> = vec![password];
-    let mut y_values: Vec<F> = vec![secret];
+    let mut x_values: Vec<F> = vec![F::from(password)];
+    let mut y_values: Vec<F> = vec![F::from(secret)];
 
     for _i in 1..threshold {
         let mut y: F = F::rand(&mut rng);
@@ -86,8 +85,8 @@ pub fn recover_secret<F: PrimeField>(secret_shares: Vec<(F, F)>, password: F) ->
     let x_values: Vec<F> = secret_shares.iter().map(|(x, _y)| *x as F).collect();
     let y_values: Vec<F> = secret_shares.iter().map(|(_x, y)| *y as F).collect();
     let resulting_poly = UnivariatePolynomialDense::interpolate(x_values, y_values);
-    
-    resulting_poly.evaluate(password)
+
+    resulting_poly.evaluate(F::from(password))
 }
 
 #[cfg(test)]
@@ -131,6 +130,6 @@ mod tests {
         let first_4_shares: Vec<(Fq, Fq)> = shares.iter().take(4).cloned().collect();
         let recovered_secret = recover_secret(first_4_shares, password);
 
-        assert_eq!(secret, recovered_secret);
+        assert_eq!(Fq::from(secret), Fq::from(recovered_secret));
     }
 }
