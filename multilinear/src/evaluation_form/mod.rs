@@ -22,7 +22,7 @@ impl<F: PrimeField> EvaluationForm<F> {
     }
     // variable position: 1st , 2nd , 3rd etc
     // in a f(a,b,c) -> a is 1, b -> 2 , c -> 3
-    pub fn partial_evaluate(&self, variable_position: u32, value: F) -> Vec<F> {
+    pub fn partial_evaluate(&mut self, variable_position: u32, value: F) {
         // Since we have just 2 bits representing two vars, -> a , b
         // 01 -> our target is b
         // 10 -> our target is a
@@ -36,9 +36,7 @@ impl<F: PrimeField> EvaluationForm<F> {
 
         // 2 ^ (number_of_vars - variable_position)
         let target = to_binary(2u32.pow(self.number_of_variables - variable_position));
-
         let pairings = find_pairs_with_xor(&self.polynomial_hypercube, target);
-
         let mut new_vec: Vec<F> = Vec::new();
 
         for pair in pairings {
@@ -53,20 +51,21 @@ impl<F: PrimeField> EvaluationForm<F> {
             );
             new_vec.push(v);
         }
-        new_vec
+        self.eval_form = new_vec;
+        self.polynomial_hypercube = generate_binary_range(self.eval_form.len() as u32);
     }
 
     // the order of the variables is important -> [a, b, c, d,...] for f(a,b,c,d,...)
-    pub fn evaluate(&self, variables: Vec<F>) {
+    pub fn evaluate(&mut self, variables: Vec<F>) -> F {
         if variables.len() != self.number_of_variables as usize {
             panic!("Invalid number of points")
         }
-        // let mut result: EvaluationForm<F> = (*self).clone();
 
-        // for i in 0..self.number_of_variables {
-        //     result.eval_form = result.partial_evaluate(i + 1, variables[i as usize]);
-        // }
-        // println!("Result: {:?}", result.eval_form);
+        for (i, var) in variables.iter().enumerate() {
+            self.partial_evaluate((i + 1) as u32, *var);
+        }
+
+        self.eval_form[0]
     }
 }
 
@@ -225,22 +224,24 @@ pub mod tests {
 
     #[test]
     fn test_partial_evaluate_1vars() {
-        let eval_form = EvaluationForm::new(vec![Fq::from(4), Fq::from(7)]);
-        let result = eval_form.partial_evaluate(1, Fq::from(3));
-        assert_eq!(result, vec![Fq::from(13)]);
+        let mut poly = EvaluationForm::new(vec![Fq::from(4), Fq::from(7)]);
+        poly.partial_evaluate(1, Fq::from(3));
+        assert_eq!(poly.eval_form, vec![Fq::from(13)]);
+        assert_eq!(poly.number_of_variables, 1);
     }
 
     #[test]
     fn test_partial_evaluate_2vars() {
-        let eval_form =
+        let mut poly =
             EvaluationForm::new(vec![Fq::from(0), Fq::from(3), Fq::from(2), Fq::from(5)]);
-        let result = eval_form.partial_evaluate(1, Fq::from(2));
-        assert_eq!(result, vec![Fq::from(4), Fq::from(7)]);
+        poly.partial_evaluate(1, Fq::from(2));
+        assert_eq!(poly.eval_form, vec![Fq::from(4), Fq::from(7)]);
+        assert_eq!(poly.number_of_variables, 2);
     }
 
     #[test]
     fn test_partial_evaluate_3vars() {
-        let eval_form = EvaluationForm::new(vec![
+        let mut poly = EvaluationForm::new(vec![
             Fq::from(0),
             Fq::from(0),
             Fq::from(0),
@@ -250,10 +251,43 @@ pub mod tests {
             Fq::from(2),
             Fq::from(5),
         ]);
-        let result = eval_form.partial_evaluate(3, Fq::from(3));
+        poly.partial_evaluate(3, Fq::from(3));
         assert_eq!(
-            result,
+            poly.eval_form,
             vec![Fq::from(0), Fq::from(9), Fq::from(0), Fq::from(11)]
+        );
+        assert_eq!(poly.number_of_variables, 3);
+    }
+
+    #[test]
+    fn test_evaluate_for_2vars() {
+        let mut eval_form = EvaluationForm::new(vec![
+            Fq::from(0),
+            Fq::from(3),
+            Fq::from(2),
+            Fq::from(5),
+        ]);
+        assert_eq!(
+            eval_form.evaluate(vec![Fq::from(2),Fq::from(3)]),
+            Fq::from(13)
+        );
+    }
+
+    #[test]
+    fn test_evaluate_for_3vars() {
+        let mut eval_form = EvaluationForm::new(vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(3),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+            Fq::from(5),
+        ]);
+        assert_eq!(
+            eval_form.evaluate(vec![Fq::from(4), Fq::from(2), Fq::from(3)]),
+            Fq::from(34)
         );
     }
 }

@@ -27,5 +27,6 @@ fn main() {
         "Before eval {:?} , no of vars: {}",
         form.eval_form, form.number_of_variables
     );
-    form.evaluate(variables);
+    let ans = form.evaluate(variables);
+    println!("Evaluated: {:?}", ans);
 }
