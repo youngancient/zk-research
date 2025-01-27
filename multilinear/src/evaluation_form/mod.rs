@@ -1,10 +1,11 @@
 use ark_ff::PrimeField;
 use std::collections::HashSet;
 
+// update this to use binary instead of decimal
 pub struct EvaluationForm<F: PrimeField> {
     pub number_of_variables: u32,
     pub eval_form: Vec<F>,
-    pub polynomial_hypercube: Vec<u32>,
+    pub boolean_hypercube: Vec<u32>,
 }
 
 impl<F: PrimeField> EvaluationForm<F> {
@@ -16,7 +17,7 @@ impl<F: PrimeField> EvaluationForm<F> {
         Self {
             eval_form,
             number_of_variables: no_of_vars,
-            polynomial_hypercube: generate_binary_range(n),
+            boolean_hypercube: (0..n).collect(),
         }
     }
     // variable position: 1st , 2nd , 3rd etc
@@ -34,13 +35,13 @@ impl<F: PrimeField> EvaluationForm<F> {
         // 3 -> 001 -> c
 
         // 2 ^ (number_of_vars - variable_position)
-        let target = to_binary(2u32.pow(self.number_of_variables - variable_position));
-        let pairings = find_pairs_with_xor(&self.polynomial_hypercube, target);
+        let target = 2u32.pow(self.number_of_variables - variable_position);
+        let pairings = find_pairs_with_xor(&self.boolean_hypercube, target);
         let mut new_vec: Vec<F> = Vec::new();
 
         for pair in pairings {
-            let index_one = binary_to_decimal(pair.0);
-            let index_two = binary_to_decimal(pair.1);
+            let index_one = pair.0;
+            let index_two = pair.1;
             let v = interpolate_and_evaluate(
                 (
                     self.eval_form[index_one as usize],
@@ -51,7 +52,7 @@ impl<F: PrimeField> EvaluationForm<F> {
             new_vec.push(v);
         }
         self.eval_form = new_vec;
-        self.polynomial_hypercube = generate_binary_range(self.eval_form.len() as u32);
+        self.boolean_hypercube = (0..self.eval_form.len() as u32).collect();
     }
 
     // the order of the variables is important -> [a, b, c, d,...] for f(a,b,c,d,...)
@@ -143,7 +144,7 @@ pub mod tests {
         let eval_form =
             EvaluationForm::new(vec![Fq::from(1), Fq::from(2), Fq::from(3), Fq::from(4)]);
         assert_eq!(eval_form.number_of_variables, 2);
-        assert_eq!(eval_form.polynomial_hypercube, vec![0, 1, 10, 11]);
+        assert_eq!(eval_form.boolean_hypercube, vec![0, 1, 2, 3]);
     }
 
     #[test]
@@ -159,59 +160,40 @@ pub mod tests {
     }
 
     #[test]
-    fn test_binary_conversion() {
-        let num = 4;
-        assert_eq!(to_binary(num), 100);
-    }
-
-    #[test]
-    fn test_binary_range_conversion() {
-        let num = 4;
-        assert_eq!(generate_binary_range(num), vec![0, 1, 10, 11]);
-    }
-
-    #[test]
-    fn test_binary_to_decimal() {
-        let num = 4;
-        let binary_val = to_binary(num);
-        assert_eq!(num, binary_to_decimal(binary_val));
-    }
-
-    #[test]
     fn test_finding_pairs() {
         let num = 4;
-        let boolean_hypercube_of_2_vars = generate_binary_range(num);
+        let boolean_hypercube_of_2_vars = (0..num).collect::<Vec<u32>>();
         // Since we have just 2 bits representing two vars, -> a , b
-        // 01 -> our target is b
-        // 10 -> our target is a
-        let a_target = 10;
-        let b_target = 01;
+        // 1 -> our target is b
+        // 2 -> our target is a
+        let a_target = 2;
+        let b_target = 1;
         let pairs_for_a = find_pairs_with_xor(&boolean_hypercube_of_2_vars, a_target);
-        assert_eq!(pairs_for_a, vec![(0, 10), (1, 11)]);
+        assert_eq!(pairs_for_a, vec![(0, 2), (1, 3)]);
 
         let pairs_for_b = find_pairs_with_xor(&boolean_hypercube_of_2_vars, b_target);
-        assert_eq!(pairs_for_b, vec![(0, 1), (10, 11)]);
+        assert_eq!(pairs_for_b, vec![(0, 1), (2, 3)]);
     }
 
     #[test]
     fn test_finding_pairs_for_3vars() {
         let num = 8;
-        let boolean_hypercube_of_2_vars = generate_binary_range(num);
+        let boolean_hypercube_of_2_vars = (0..num).collect::<Vec<u32>>();
         // Since we have just 2 bits representing two vars, -> a , b
         // 01 -> our target is b
         // 10 -> our target is a
-        let a_target = 100;
-        let b_target = 010;
-        let c_target = 001;
+        let a_target = 4;
+        let b_target = 2;
+        let c_target = 1;
 
         let pairs_for_a = find_pairs_with_xor(&boolean_hypercube_of_2_vars, a_target);
-        assert_eq!(pairs_for_a, vec![(0, 100), (1, 101), (10, 110), (11, 111)]);
+        assert_eq!(pairs_for_a, vec![(0, 4), (1, 5), (2, 6), (3, 7)]);
 
         let pairs_for_b = find_pairs_with_xor(&boolean_hypercube_of_2_vars, b_target);
-        assert_eq!(pairs_for_b, vec![(0, 10), (1, 11), (100, 110), (101, 111)]);
+        assert_eq!(pairs_for_b, vec![(0, 2), (1, 3), (4, 6), (5, 7)]);
 
         let pairs_for_c = find_pairs_with_xor(&boolean_hypercube_of_2_vars, c_target);
-        assert_eq!(pairs_for_c, vec![(0, 1), (10, 11), (100, 101), (110, 111)]);
+        assert_eq!(pairs_for_c, vec![(0, 1), (2, 3), (4, 5), (6, 7)]);
     }
 
     #[test]
@@ -260,14 +242,10 @@ pub mod tests {
 
     #[test]
     fn test_evaluate_for_2vars() {
-        let mut eval_form = EvaluationForm::new(vec![
-            Fq::from(0),
-            Fq::from(3),
-            Fq::from(2),
-            Fq::from(5),
-        ]);
+        let mut eval_form =
+            EvaluationForm::new(vec![Fq::from(0), Fq::from(3), Fq::from(2), Fq::from(5)]);
         assert_eq!(
-            eval_form.evaluate(vec![Fq::from(2),Fq::from(3)]),
+            eval_form.evaluate(vec![Fq::from(2), Fq::from(3)]),
             Fq::from(13)
         );
     }
