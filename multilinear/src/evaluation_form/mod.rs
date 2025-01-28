@@ -80,39 +80,6 @@ pub fn get_power_of_two(value: u32) -> u32 {
     value.trailing_zeros()
 }
 
-// this function converts decimal to binary
-pub fn to_binary(mut num: u32) -> u32 {
-    let mut result: u32 = 0;
-    let mut pow: u32 = 1;
-
-    while num > 0 {
-        result += (num % 2) * pow;
-        num /= 2;
-        pow *= 10;
-    }
-
-    result
-}
-
-// this function converts binary to decimal
-pub fn binary_to_decimal(mut binary: u32) -> u32 {
-    let mut decimal: u32 = 0;
-    let mut pow: u32 = 1;
-
-    while binary > 0 {
-        decimal += (binary % 10) * pow;
-        binary /= 10;
-        pow *= 2;
-    }
-
-    decimal
-}
-
-// this function takes in a number and generates binary values up to the num - 1
-pub fn generate_binary_range(n: u32) -> Vec<u32> {
-    (0..n).map(|i| to_binary(i)).collect()
-}
-
 // this function uses XOR gate to pair the entities of the boolean hypercube
 pub fn find_pairs_with_xor(nums: &[u32], target: u32) -> Vec<(u32, u32)> {
     let mut result = Vec::new();
