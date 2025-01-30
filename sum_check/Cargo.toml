@@ -1,0 +1,8 @@
+[package]
+name = "sum_check"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ark-ff = "0.5.0"
+univariate = {path = "../univariate"}

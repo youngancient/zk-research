@@ -67,6 +67,14 @@ impl<F: PrimeField> EvaluationForm<F> {
 
         self.eval_form[0]
     }
+
+    // pub fn evaluate_two_vars()
+
+    // converts polynimial from F -> list of bytes
+    // use case:: fiat-shamir implementation
+    pub fn to_bytes(&self) -> Vec<u8>{
+        todo!()
+    }
 }
 
 // helper functions
@@ -99,6 +107,11 @@ pub fn find_pairs_with_xor(nums: &[u32], target: u32) -> Vec<(u32, u32)> {
 // suppose we want to evaluate y1 -> y2   at r
 pub fn interpolate_and_evaluate<F: PrimeField>(y_values: (F, F), r: F) -> F {
     y_values.0 + r * (y_values.1 - y_values.0)
+}
+
+pub fn bilinear_interpolation<F:PrimeField>(y_values: (F,F), r:F) -> F{
+    
+    todo!()
 }
 
 #[cfg(test)]
