@@ -1,7 +1,9 @@
-use ark_ff::PrimeField;
+use ark_ff::{BigInteger, PrimeField};
 use std::collections::HashSet;
 
 // update this to use binary instead of decimal
+#[derive(Clone)]
+
 pub struct EvaluationForm<F: PrimeField> {
     pub number_of_variables: u32,
     pub eval_form: Vec<F>,
@@ -60,11 +62,13 @@ impl<F: PrimeField> EvaluationForm<F> {
         if variables.len() != self.number_of_variables as usize {
             panic!("Invalid number of points")
         }
-
+        // dbg!(&variables, &self.eval_form);
         for (i, var) in variables.iter().enumerate() {
             self.partial_evaluate((i + 1) as u32, *var);
         }
-
+        if self.eval_form.is_empty() {
+            panic!("polynomial is empty!");
+        }
         self.eval_form[0]
     }
 
@@ -72,8 +76,11 @@ impl<F: PrimeField> EvaluationForm<F> {
 
     // converts polynimial from F -> list of bytes
     // use case:: fiat-shamir implementation
-    pub fn to_bytes(&self) -> Vec<u8>{
-        todo!()
+    pub fn to_bytes(polynomial: &Vec<F>) -> Vec<u8> {
+        polynomial
+            .iter()
+            .flat_map(|coeff| coeff.into_bigint().to_bytes_be())
+            .collect()
     }
 }
 
@@ -109,10 +116,10 @@ pub fn interpolate_and_evaluate<F: PrimeField>(y_values: (F, F), r: F) -> F {
     y_values.0 + r * (y_values.1 - y_values.0)
 }
 
-pub fn bilinear_interpolation<F:PrimeField>(y_values: (F,F), r:F) -> F{
-    
-    todo!()
-}
+// pub fn bilinear_interpolation<F:PrimeField>(y_values: (F,F), r:F) -> F{
+
+//     todo!()
+// }
 
 #[cfg(test)]
 pub mod tests {
@@ -230,6 +237,24 @@ pub mod tests {
         );
     }
 
+    #[test]
+    fn test_to_bytes() {
+        let polynomial =
+            EvaluationForm::new(vec![Fq::from(0), Fq::from(3), Fq::from(2), Fq::from(5)]);
+        // Compute the expected byte representation manually
+        let expected_bytes: Vec<u8> = polynomial
+            .eval_form
+            .iter()
+            .flat_map(|coeff| coeff.into_bigint().to_bytes_be())
+            .collect();
+
+        // Get actual bytes using the to_bytes function
+        let actual_bytes = EvaluationForm::to_bytes(&polynomial.eval_form);
+
+        // Assert that both byte representations match
+        assert_eq!(actual_bytes, expected_bytes);
+    }
+    
     #[test]
     fn test_evaluate_for_3vars() {
         let mut eval_form = EvaluationForm::new(vec![

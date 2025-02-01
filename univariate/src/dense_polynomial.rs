@@ -158,6 +158,7 @@ impl<F: PrimeField> UnivariatePolynomialDense<F> {
 
         polynomial_sum
     }
+
 }
 
 // write tests
