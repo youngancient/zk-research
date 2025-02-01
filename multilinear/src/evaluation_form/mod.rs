@@ -238,7 +238,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_to_bytes() {
+    fn test_to_bytes_for_2vars() {
         let polynomial =
             EvaluationForm::new(vec![Fq::from(0), Fq::from(3), Fq::from(2), Fq::from(5)]);
         // Compute the expected byte representation manually
@@ -254,7 +254,6 @@ pub mod tests {
         // Assert that both byte representations match
         assert_eq!(actual_bytes, expected_bytes);
     }
-    
     #[test]
     fn test_evaluate_for_3vars() {
         let mut eval_form = EvaluationForm::new(vec![
