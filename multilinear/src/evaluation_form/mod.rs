@@ -116,10 +116,20 @@ pub fn interpolate_and_evaluate<F: PrimeField>(y_values: (F, F), r: F) -> F {
     y_values.0 + r * (y_values.1 - y_values.0)
 }
 
-// pub fn bilinear_interpolation<F:PrimeField>(y_values: (F,F), r:F) -> F{
-
-//     todo!()
-// }
+use rand::thread_rng;
+pub fn gen_random_vars<F: PrimeField>(n: u32) -> Vec<F> {
+    let mut rng = thread_rng();
+    let mut vars_list: Vec<F> = Vec::new();
+    for _ in 0..n {
+        let y: F = F::rand(&mut rng);
+        vars_list.push(y);
+    }
+    vars_list
+}
+pub fn gen_based_on_two<F: PrimeField>(n: u32) -> Vec<F> {
+    let to_pow_two = 2u32.pow(n);
+    gen_random_vars(to_pow_two)
+}
 
 #[cfg(test)]
 pub mod tests {

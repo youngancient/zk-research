@@ -4,6 +4,9 @@ use multilinear::evaluation_form::{interpolate_and_evaluate, EvaluationForm};
 use sha3::{Digest, Keccak256};
 
 #[derive(Debug)]
+
+#[derive(Clone)]
+
 pub struct Proof<F: PrimeField> {
     sum: F,
     polynomials: Vec<Vec<F>>,
