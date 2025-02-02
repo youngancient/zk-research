@@ -12,11 +12,15 @@ pub struct Proof<F: PrimeField> {
     polynomials: Vec<Vec<F>>,
 }
 
+// sums the univariate poly [a1,a2] at a= 0 and a = 1
 pub fn get_sum_at_0_and_1<F: PrimeField>(polynomial: &Vec<F>) -> F {
     let sum: F = polynomial.iter().sum();
     sum
 }
 
+// splits an array in a tuple of 2 vectors 
+// where the starting indexes of the elements in the first is 0
+// and that of the second is 1
 fn split_by_var<F: PrimeField>(arr: &[F], var: usize) -> (Vec<F>, Vec<F>) {
     let mut left = Vec::new();
     let mut right = Vec::new();
@@ -53,6 +57,8 @@ pub fn evaluate_at_two_vars<F: PrimeField>(poly_vec: &Vec<F>, var: usize) -> Vec
     vec![left.iter().sum::<F>(), right.iter().sum::<F>()]
 }
 
+// proves that the claim_sum was derived from the polynomial
+// returns a proof
 pub fn prove<F: PrimeField>(polynomial: &mut EvaluationForm<F>, claim_sum: F) -> Proof<F> {
     let mut transcript: Transcript<F, Keccak256> = Transcript::init(Keccak256::new());
     transcript.append(&EvaluationForm::to_bytes(&polynomial.eval_form));
@@ -82,6 +88,7 @@ pub fn prove<F: PrimeField>(polynomial: &mut EvaluationForm<F>, claim_sum: F) ->
     proof
 }
 
+// verifies that the claim_sum was gotten from the polynomial based on the proof provided
 pub fn verify<F: PrimeField>(proof: Proof<F>, polynomial: &mut EvaluationForm<F>) -> bool {
     let mut transcript: Transcript<F, Keccak256> = Transcript::init(Keccak256::new());
     transcript.append(&EvaluationForm::to_bytes(&polynomial.eval_form));
@@ -119,7 +126,6 @@ pub fn verify<F: PrimeField>(proof: Proof<F>, polynomial: &mut EvaluationForm<F>
 mod tests {
     use super::*;
     use ark_bn254::Fq;
-    use ark_ff::UniformRand;
 
     fn get_test_poly() -> EvaluationForm<Fq> {
         EvaluationForm::new(vec![
