@@ -1,9 +1,12 @@
 use ark_ff::PrimeField;
+
+#[derive(Debug)]
 pub enum GateOperation {
     Add,
     Mul,
 }
 
+#[derive(Debug)]
 pub struct Gate {
     pub left_index: usize,
     pub right_index: usize,

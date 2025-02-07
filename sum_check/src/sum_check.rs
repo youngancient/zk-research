@@ -3,9 +3,7 @@ use fiat_shamir::fiat_shamir::Transcript;
 use multilinear::evaluation_form::{interpolate_and_evaluate, EvaluationForm};
 use sha3::{Digest, Keccak256};
 
-#[derive(Debug)]
-
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 
 pub struct Proof<F: PrimeField> {
     sum: F,
@@ -18,7 +16,7 @@ pub fn get_sum_at_0_and_1<F: PrimeField>(polynomial: &Vec<F>) -> F {
     sum
 }
 
-// splits an array in a tuple of 2 vectors 
+// splits an array in a tuple of 2 vectors
 // where the starting indexes of the elements in the first is 0
 // and that of the second is 1
 fn split_by_var<F: PrimeField>(arr: &[F], var: usize) -> (Vec<F>, Vec<F>) {
@@ -153,6 +151,10 @@ mod tests {
         ])
     }
 
+    fn get_test_poly3() -> EvaluationForm<Fq> {
+        EvaluationForm::new(vec![Fq::from(0), Fq::from(3), Fq::from(2), Fq::from(5)])
+    }
+
     #[test]
     fn test_get_sum_at_0_and_1() {
         let sum1 = get_sum_at_0_and_1(&get_test_poly().eval_form);
@@ -212,6 +214,15 @@ mod tests {
         let sum = get_sum_at_0_and_1(&poly2.eval_form);
         let proof = prove(&mut poly2.clone(), sum);
         let is_valid = verify(proof, &mut poly2);
+        assert_eq!(is_valid, true);
+    }
+
+    #[test]
+    fn test_prove_and_verify_valid_proof_of_2vars() {
+        let mut poly3 = get_test_poly3();
+        let sum = get_sum_at_0_and_1(&poly3.eval_form);
+        let proof = prove(&mut poly3.clone(), sum);
+        let is_valid = verify(proof, &mut poly3);
         assert_eq!(is_valid, true);
     }
 
