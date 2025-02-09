@@ -32,7 +32,7 @@ impl Gate {
             GateOperation::Add => left_val + right_val,
             GateOperation::Mul => left_val * right_val,
         };
-        outputs[self.output] = output;
+        outputs[self.output] += output;
     }
 }
 
@@ -62,5 +62,19 @@ mod tests {
         let gate2 = Gate::new(2, 3, 1, GateOperation::Mul);
         gate2.evaluate(&inputs, &mut outputs);
         assert_eq!(outputs[1], Fq::from(24));
+    }
+
+    #[test]
+    fn test_anomaly() {
+        // we want to test how a + b + bc gate works
+        let inputs = vec![Fq::from(1), Fq::from(2), Fq::from(3)];
+        let mut outputs: Vec<Fq> = vec![Fq::from(0)];
+
+        let gate = Gate::new(0, 1, 0, GateOperation::Add);
+        let gate2 = Gate::new(1, 2, 0, GateOperation::Mul);
+        gate.evaluate(&inputs, &mut outputs);
+        gate2.evaluate(&inputs, &mut outputs);
+
+        assert_eq!(outputs[0], Fq::from(9));
     }
 }

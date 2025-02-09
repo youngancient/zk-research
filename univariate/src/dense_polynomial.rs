@@ -35,13 +35,16 @@ impl<F: PrimeField> UnivariatePolynomialDense<F> {
     pub fn evaluate(&self, x: F) -> F {
         // logic
         let mut val: F = F::zero();
+        let mut x_pows:F = F::one();
         for (i, value) in self.coefficients.iter().enumerate() {
             if x == F::zero() {
                 return self.coefficients[0];
             }
-            if *value != F::zero() {
-                val += *value * x.pow([i as u64]);
+            // [x^0, x^0 * x, x^1 * x, x^2 * x, …]
+            if i > 0{
+                x_pows *= x;
             }
+            val += *value * x_pows;
         }
         val
     }
@@ -187,6 +190,12 @@ mod tests {
     #[test]
     fn test_evaluate() {
         let poly = poly1();
+        assert_eq!(poly.evaluate(Fq::from(2)), Fq::from(17));
+    }
+
+    #[test]
+    fn test_evaluate2(){
+        let poly = UnivariatePolynomialDense::new(vec![Fq::from(5), Fq::from(0), Fq::from(3)]);
         assert_eq!(poly.evaluate(Fq::from(2)), Fq::from(17));
     }
 

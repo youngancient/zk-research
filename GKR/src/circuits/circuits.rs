@@ -24,6 +24,9 @@ impl Circuit {
         }
         layer_evaluations
     }
+    // pub fn add_i
+    // pub fn mul_i
+    
 }
 
 #[cfg(test)]
