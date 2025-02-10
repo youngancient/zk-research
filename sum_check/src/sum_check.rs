@@ -72,11 +72,12 @@ pub fn prove<F: PrimeField>(polynomial: &mut EvaluationForm<F>, claim_sum: F) ->
     proof.sum = claim_sum;
     for i in 1..=polynomial.number_of_variables {
         // transcript.append();
-        let challenge = transcript.hash();
-
+        
         let univariate_poly = evaluate_at_two_vars(&polynomial.eval_form, 1 as usize);
-
+        
         transcript.append(&EvaluationForm::to_bytes(&univariate_poly));
+        
+        let challenge = transcript.hash();
 
         proof.polynomials.push(univariate_poly);
         // println!("sum -> {:?}", get_sum_at_0_and_1(&polynomial.eval_form));
@@ -102,10 +103,12 @@ pub fn verify<F: PrimeField>(proof: Proof<F>, polynomial: &mut EvaluationForm<F>
         if claimed_sum != verified_sum {
             return false;
         }
+        
+        transcript.append(&EvaluationForm::to_bytes(&univariate_poly));
+
         let challenge = transcript.hash();
         // the sum for the next univariate_poly
         claimed_sum = interpolate_and_evaluate((univariate_poly[0], univariate_poly[1]), challenge);
-        transcript.append(&EvaluationForm::to_bytes(&univariate_poly));
 
         random_challenges.push(challenge);
     }
