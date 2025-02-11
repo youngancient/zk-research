@@ -1,3 +1,3 @@
 pub mod circuits;
-pub mod layers;
 pub mod gates;
+pub mod layers;
