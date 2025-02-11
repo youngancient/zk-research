@@ -58,7 +58,7 @@ impl<F: PrimeField> EvaluationForm<F> {
     }
 
     // the order of the variables is important -> [a, b, c, d,...] for f(a,b,c,d,...)
-    pub fn evaluate(&mut self, variables: Vec<F>) -> F {
+    pub fn evaluate(&mut self, variables: &Vec<F>) -> F {
         if variables.len() != self.number_of_variables as usize {
             panic!("Invalid number of points")
         }
@@ -129,6 +129,54 @@ pub fn gen_random_vars<F: PrimeField>(n: u32) -> Vec<F> {
 pub fn gen_based_on_two<F: PrimeField>(n: u32) -> Vec<F> {
     let to_pow_two = 2u32.pow(n);
     gen_random_vars(to_pow_two)
+}
+
+// product poly
+// instead of getting the prod of 2 polynomials : 3ab x 2ab
+// we represent the 2 polynomials in the form: 3ab x 2ab
+pub struct ProdPoly<F: PrimeField> {
+    pub polynomials: Vec<EvaluationForm<F>>,
+    pub no_of_vars:u32,
+}
+
+impl<F: PrimeField> ProdPoly<F> {
+    pub fn new(polynomials: Vec<EvaluationForm<F>>) -> Self {
+        if polynomials.is_empty() {
+            panic!("poly cannot be empty!");
+        }
+
+        let no_of_vars = polynomials[0].number_of_variables;
+        for poly in &polynomials {
+            if poly.number_of_variables != no_of_vars {
+                panic!("Polynomials must be of the same number of variables");
+            }
+        }
+        ProdPoly { polynomials, no_of_vars }
+    }
+
+    pub fn partial_evaluate(&mut self, variable_position: u32, value: F) {
+        for poly in &mut self.polynomials {
+            poly.partial_evaluate(variable_position, value);
+        }
+    }
+
+    pub fn evaluate(&mut self, variables: &Vec<F>) -> F {
+        let mut product = F::one();
+        if (variables.len() as u32) != self.no_of_vars{
+            panic!("Invalid variable length!");
+        }
+        for poly in &mut self.polynomials {
+            product *= poly.evaluate(&variables);
+        }
+        product
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.polynomials
+            .iter()
+            .flat_map(|polynomial| EvaluationForm::to_bytes(&polynomial.eval_form))
+            .collect()
+    }
 }
 
 #[cfg(test)]
@@ -242,7 +290,7 @@ pub mod tests {
         let mut eval_form =
             EvaluationForm::new(vec![Fq::from(0), Fq::from(3), Fq::from(2), Fq::from(5)]);
         assert_eq!(
-            eval_form.evaluate(vec![Fq::from(2), Fq::from(3)]),
+            eval_form.evaluate(&vec![Fq::from(2), Fq::from(3)]),
             Fq::from(13)
         );
     }
@@ -277,8 +325,29 @@ pub mod tests {
             Fq::from(5),
         ]);
         assert_eq!(
-            eval_form.evaluate(vec![Fq::from(4), Fq::from(2), Fq::from(3)]),
+            eval_form.evaluate(&vec![Fq::from(4), Fq::from(2), Fq::from(3)]),
             Fq::from(34)
         );
+    }
+
+    fn get_prod_poly() -> ProdPoly<Fq>{
+        let polynomials = vec![
+            EvaluationForm::new(vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(3)]),
+            EvaluationForm::new(vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(2)]),
+        ];
+        let prod_poly = ProdPoly::new(polynomials);
+        prod_poly
+    }
+    #[test]
+    fn test_prod_poly_creation() {
+        let prod_poly = get_prod_poly();
+        assert_eq!(prod_poly.no_of_vars,2);
+    }
+
+    #[test]
+    fn test_prod_poly_eval(){
+        let mut prod_poly = get_prod_poly();
+        let eval = prod_poly.evaluate(&vec![Fq::from(1), Fq::from(2)]);
+        assert_eq!(eval,Fq::from(24));
     }
 }

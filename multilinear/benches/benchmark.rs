@@ -89,22 +89,22 @@ fn benchmark(c: &mut Criterion) -> () {
 
     // evaluate
     group.bench_function("evaluate_for_2vars", |b| {
-        b.iter(|| black_box(poly.clone().evaluate(vec![Fq::from(2), Fq::from(3)])))
+        b.iter(|| black_box(poly.clone().evaluate(&vec![Fq::from(2), Fq::from(3)])))
     });
     group.bench_function("evaluate_for_3vars", |b| {
         b.iter(|| {
             black_box(
                 poly_of_3vars
                     .clone()
-                    .evaluate(vec![Fq::from(4), Fq::from(2), Fq::from(3)]),
+                    .evaluate(&vec![Fq::from(4), Fq::from(2), Fq::from(3)]),
             )
         })
     });
     group.bench_function("evaluate_for_10vars", |b| {
-        b.iter(|| black_box(poly_of_10vars.clone().evaluate(gen_random_vars(10))))
+        b.iter(|| black_box(poly_of_10vars.clone().evaluate(&gen_random_vars(10))))
     });
     group.bench_function("evaluate_for_20vars", |b| {
-        b.iter(|| black_box(poly_of_20vars.clone().evaluate(gen_random_vars(20))))
+        b.iter(|| black_box(poly_of_20vars.clone().evaluate(&gen_random_vars(20))))
     });
     group.finish();
 }

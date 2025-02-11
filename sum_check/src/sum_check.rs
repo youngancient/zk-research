@@ -113,7 +113,7 @@ pub fn verify<F: PrimeField>(proof: Proof<F>, polynomial: &mut EvaluationForm<F>
         random_challenges.push(challenge);
     }
 
-    let derived_sum = polynomial.evaluate(random_challenges);
+    let derived_sum = polynomial.evaluate(&random_challenges);
 
     // oracle check
     if claimed_sum != derived_sum {

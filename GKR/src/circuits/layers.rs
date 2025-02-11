@@ -1,6 +1,7 @@
 use crate::circuits::gates::{Gate, GateOperation};
 use ark_ff::PrimeField;
 
+#[derive(Debug)]
 pub struct Layer {
     pub gates: Vec<Gate>,
 }
