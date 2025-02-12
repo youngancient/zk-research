@@ -1,7 +1,6 @@
 use ark_ff::PrimeField;
 
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 
 pub enum GateOperation {
     Add,

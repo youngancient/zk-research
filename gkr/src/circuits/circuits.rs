@@ -42,14 +42,16 @@ impl<F: PrimeField> Circuit<F> {
         EvaluationForm::new(self.layer_evals[layer_index as usize].clone())
     }
 
-    pub fn add_i(&self, layer_index: u32) -> EvaluationForm<F> {
+    pub fn add_and_mul_i(&self, layer_index: u32) -> (EvaluationForm<F>, EvaluationForm<F>) {
         // the top layer is indexed at i = 0
         // preceding layers are i + 1
         let diff = (self.layers.len() as u32) - layer_index - 1;
 
         let layer = &self.layers[diff as usize];
         let no_of_gates = layer.gates.len() as u32;
-        let mut eval_form: Vec<F> = vec![F::zero(); 2u32.pow(no_of_gates * 2) as usize];
+
+        let mut add_eval_form: Vec<F> = vec![F::zero(); 2u32.pow(no_of_gates * 2) as usize];
+        let mut mul_eval_form: Vec<F> = vec![F::zero(); 2u32.pow(no_of_gates * 2) as usize];
 
         for gate in &layer.gates {
             if gate.op == GateOperation::Add {
@@ -61,10 +63,23 @@ impl<F: PrimeField> Circuit<F> {
                     ],
                     to_log2(no_of_gates * 2) as usize,
                 ) as usize;
-                eval_form[index] = F::one();
+                add_eval_form[index] = F::one();
+            } else if gate.op == GateOperation::Mul {
+                let index = combine_convert(
+                    vec![
+                        gate.output as u32,
+                        gate.left_index as u32,
+                        gate.right_index as u32,
+                    ],
+                    to_log2(no_of_gates * 2) as usize,
+                ) as usize;
+                mul_eval_form[index] = F::one();
             }
         }
-        EvaluationForm::new(eval_form)
+        (
+            EvaluationForm::new(add_eval_form),
+            EvaluationForm::new(mul_eval_form),
+        )
     }
 
     pub fn mul_i(&self, layer_index: u32) -> EvaluationForm<F> {
@@ -98,7 +113,6 @@ pub fn combine_convert(values: Vec<u32>, digit: usize) -> u32 {
         .iter()
         .map(|&x| format!("{:0digit$b}", x, digit = digit))
         .collect();
-    println!("binary -> {}", binary_string);
     u32::from_str_radix(&binary_string, 2).unwrap()
 }
 
@@ -257,11 +271,11 @@ mod test {
     }
 
     #[test]
-    fn test_add_i() {
+    fn test_add_and_mul_i() {
         let circuit_example: Circuit<Fq> = get_circuit3();
         let layer_index = 2;
         // let inputs:Vec<u32> = vec![0, 0, 1];
-        let add_i_poly = circuit_example.add_i(layer_index);
+        let (add_i_poly, mul_i_poly) = circuit_example.add_and_mul_i(layer_index);
         assert_eq!(
             add_i_poly
                 .clone()
@@ -284,6 +298,24 @@ mod test {
             add_i_poly
                 .clone()
                 .evaluate(&convert_to_fq_elements(vec![1, 1, 0, 1, 1, 0, 0, 1])),
+            Fq::from(0)
+        );
+        assert_eq!(
+            mul_i_poly
+                .clone()
+                .evaluate(&convert_to_fq_elements(vec![1, 1, 1, 1, 0, 1, 1, 1])),
+            Fq::from(1)
+        );
+        assert_eq!(
+            mul_i_poly
+                .clone()
+                .evaluate(&convert_to_fq_elements(vec![0, 1, 1, 1, 0, 1, 1, 1])),
+            Fq::from(0)
+        );
+        assert_eq!(
+            mul_i_poly
+                .clone()
+                .evaluate(&convert_to_fq_elements(vec![1, 1, 1, 1, 1, 1, 1, 1])),
             Fq::from(0)
         );
     }

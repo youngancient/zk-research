@@ -61,8 +61,14 @@ pub fn prove<F: PrimeField>(polynomial: &mut EvaluationForm<F>, claim_sum: F) ->
     let mut transcript: Transcript<F, Keccak256> = Transcript::init(Keccak256::new());
     transcript.append(&EvaluationForm::to_bytes(&polynomial.eval_form));
 
-    // let random_array = [F::from(5), F::from(10), F::from(2)]; // replace with transcript
+    partial_prove(polynomial, claim_sum, &mut transcript)
+}
 
+pub fn partial_prove<F: PrimeField>(
+    polynomial: &mut EvaluationForm<F>,
+    claim_sum: F,
+    transcript: &mut Transcript<F, Keccak256>,
+) -> Proof<F> {
     transcript.append(claim_sum.into_bigint().to_bytes_be().as_slice());
 
     let mut proof: Proof<F> = Proof {
@@ -72,11 +78,11 @@ pub fn prove<F: PrimeField>(polynomial: &mut EvaluationForm<F>, claim_sum: F) ->
     proof.sum = claim_sum;
     for i in 1..=polynomial.number_of_variables {
         // transcript.append();
-        
+
         let univariate_poly = evaluate_at_two_vars(&polynomial.eval_form, 1 as usize);
-        
+
         transcript.append(&EvaluationForm::to_bytes(&univariate_poly));
-        
+
         let challenge = transcript.hash();
 
         proof.polynomials.push(univariate_poly);
@@ -91,9 +97,26 @@ pub fn prove<F: PrimeField>(polynomial: &mut EvaluationForm<F>, claim_sum: F) ->
 pub fn verify<F: PrimeField>(proof: Proof<F>, polynomial: &mut EvaluationForm<F>) -> bool {
     let mut transcript: Transcript<F, Keccak256> = Transcript::init(Keccak256::new());
     transcript.append(&EvaluationForm::to_bytes(&polynomial.eval_form));
+
+    let (is_partially_verified, claimed_sum, random_challenges) =
+        partial_verify(&mut transcript, proof);
+    if !is_partially_verified {
+        return false;
+    }
+    let derived_sum = polynomial.evaluate(&random_challenges);
+    // oracle check
+    if claimed_sum != derived_sum {
+        return false;
+    }
+    true
+}
+
+pub fn partial_verify<F: PrimeField>(
+    transcript: &mut Transcript<F, Keccak256>,
+    proof: Proof<F>,
+) -> (bool, F, Vec<F>) {
     transcript.append(proof.sum.into_bigint().to_bytes_be().as_slice());
 
-    // let random_array = [F::from(5), F::from(10), F::from(2)]; // replace with transcript
     let mut claimed_sum = proof.sum;
     let mut random_challenges: Vec<F> = Vec::new();
     for univariate_poly in proof.polynomials {
@@ -101,9 +124,9 @@ pub fn verify<F: PrimeField>(proof: Proof<F>, polynomial: &mut EvaluationForm<F>
 
         // checks if the sums are equal
         if claimed_sum != verified_sum {
-            return false;
+            return (false, claimed_sum, random_challenges);
         }
-        
+
         transcript.append(&EvaluationForm::to_bytes(&univariate_poly));
 
         let challenge = transcript.hash();
@@ -113,13 +136,7 @@ pub fn verify<F: PrimeField>(proof: Proof<F>, polynomial: &mut EvaluationForm<F>
         random_challenges.push(challenge);
     }
 
-    let derived_sum = polynomial.evaluate(&random_challenges);
-
-    // oracle check
-    if claimed_sum != derived_sum {
-        return false;
-    }
-    true
+    (true, claimed_sum, random_challenges)
 }
 
 #[cfg(test)]
