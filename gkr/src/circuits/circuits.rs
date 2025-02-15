@@ -1,8 +1,11 @@
+use std::ops::Mul;
+
 use crate::circuits::gates::{Gate, GateOperation};
 use crate::circuits::layers::Layer;
-use ark_bn254::Fq;
 use ark_ff::PrimeField;
-use multilinear::evaluation_form::EvaluationForm;
+use multilinear::evaluation_form::{
+    combine_convert, convert_to_fq_elements, MultilinearEvalForm, Op, ProdPoly, SumPoly,
+};
 
 pub struct Circuit<F: PrimeField> {
     pub layers: Vec<Layer>,
@@ -34,15 +37,18 @@ impl<F: PrimeField> Circuit<F> {
 
     // layer evaluation polynomial for layer_i
     // the top most layer is layer 0
-    pub fn w_mle(&self, layer_index: u32) -> EvaluationForm<F> {
+    pub fn w_mle(&self, layer_index: u32) -> MultilinearEvalForm<F> {
         let length = self.layer_evals.len() as u32;
         if length <= layer_index || length == 0 {
             panic!("Compute circuit first!");
         }
-        EvaluationForm::new(self.layer_evals[layer_index as usize].clone())
+        MultilinearEvalForm::new(self.layer_evals[layer_index as usize].clone())
     }
 
-    pub fn add_and_mul_i(&self, layer_index: u32) -> (EvaluationForm<F>, EvaluationForm<F>) {
+    pub fn add_and_mul_i(
+        &self,
+        layer_index: u32,
+    ) -> (MultilinearEvalForm<F>, MultilinearEvalForm<F>) {
         // the top layer is indexed at i = 0
         // preceding layers are i + 1
         let diff = (self.layers.len() as u32) - layer_index - 1;
@@ -77,45 +83,29 @@ impl<F: PrimeField> Circuit<F> {
             }
         }
         (
-            EvaluationForm::new(add_eval_form),
-            EvaluationForm::new(mul_eval_form),
+            MultilinearEvalForm::new(add_eval_form),
+            MultilinearEvalForm::new(mul_eval_form),
         )
     }
 
-    pub fn mul_i(&self, layer_index: u32) -> EvaluationForm<F> {
-        // the top layer is indexed at i = 0
-        // preceding layers are i + 1
-        let diff = (self.layers.len() as u32) - layer_index - 1;
-
-        let layer = &self.layers[diff as usize];
-        let no_of_gates = layer.gates.len() as u32;
-        let mut eval_form: Vec<F> = vec![F::zero(); 2u32.pow(no_of_gates * 2) as usize];
-
-        for gate in &layer.gates {
-            if gate.op == GateOperation::Mul {
-                let index = combine_convert(
-                    vec![
-                        gate.output as u32,
-                        gate.left_index as u32,
-                        gate.right_index as u32,
-                    ],
-                    to_log2(no_of_gates * 2) as usize,
-                ) as usize;
-                eval_form[index] = F::one();
-            }
-        }
-        EvaluationForm::new(eval_form)
+    pub fn f_b_c(
+        add_i: MultilinearEvalForm<F>,
+        mul_i: MultilinearEvalForm<F>,
+        w_i: &MultilinearEvalForm<F>,
+    ) -> SumPoly<F> {
+        let add_prod_poly = ProdPoly::new(vec![
+            add_i,
+            MultilinearEvalForm::add_or_mul(w_i, w_i, Op::Add),
+        ]);
+        let mul_prod_poly = ProdPoly::new(vec![
+            mul_i,
+            MultilinearEvalForm::add_or_mul(w_i, w_i, Op::Mul),
+        ]);
+        SumPoly { product_polys: vec![add_prod_poly,mul_prod_poly] }
     }
 }
 
-pub fn combine_convert(values: Vec<u32>, digit: usize) -> u32 {
-    let binary_string: String = values
-        .iter()
-        .map(|&x| format!("{:0digit$b}", x, digit = digit))
-        .collect();
-    u32::from_str_radix(&binary_string, 2).unwrap()
-}
-
+// returns log2 of n
 pub fn to_log2(n: u32) -> u32 {
     if n == 0 {
         panic!("log2 is undefined for zero");
@@ -123,13 +113,10 @@ pub fn to_log2(n: u32) -> u32 {
     31 - n.leading_zeros()
 }
 
-pub fn convert_to_fq_elements(values: Vec<u32>) -> Vec<Fq> {
-    values.into_iter().map(|x| Fq::from(x)).collect()
-}
-
 #[cfg(test)]
 
 mod test {
+    use ark_bn254::Fq;
     use std::vec;
 
     use super::*;
@@ -266,11 +253,6 @@ mod test {
     }
 
     #[test]
-    fn test_combine_convert() {
-        assert_eq!(combine_convert(vec![1, 2, 3], 3), 83);
-    }
-
-    #[test]
     fn test_add_and_mul_i() {
         let circuit_example: Circuit<Fq> = get_circuit3();
         let layer_index = 2;
@@ -318,5 +300,10 @@ mod test {
                 .evaluate(&convert_to_fq_elements(vec![1, 1, 1, 1, 1, 1, 1, 1])),
             Fq::from(0)
         );
+    }
+
+    // understand GKR interactively
+    fn test_gkr_ish() {
+        // the Verifier sends inputs Vec<F>  -> Prover
     }
 }

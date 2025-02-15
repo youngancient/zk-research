@@ -1,13 +1,13 @@
 use ark_bn254::Fq;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use multilinear::evaluation_form::{
-    find_pairs_with_xor, gen_based_on_two, gen_random_vars, EvaluationForm,
+    find_pairs_with_xor, gen_based_on_two, gen_random_vars, MultilinearEvalForm,
 };
 
 fn benchmark(c: &mut Criterion) -> () {
     let mut group = c.benchmark_group("multilinear");
-    let poly = EvaluationForm::new(vec![Fq::from(0), Fq::from(3), Fq::from(2), Fq::from(5)]);
-    let poly_of_3vars = EvaluationForm::new(vec![
+    let poly = MultilinearEvalForm::new(vec![Fq::from(0), Fq::from(3), Fq::from(2), Fq::from(5)]);
+    let poly_of_3vars = MultilinearEvalForm::new(vec![
         Fq::from(0),
         Fq::from(0),
         Fq::from(0),
@@ -18,10 +18,10 @@ fn benchmark(c: &mut Criterion) -> () {
         Fq::from(5),
     ]);
 
-    let poly_of_10vars = EvaluationForm::<Fq>::new(gen_based_on_two(10));
+    let poly_of_10vars = MultilinearEvalForm::<Fq>::new(gen_based_on_two(10));
     // let ten_vars:Vec<Fq> = gen_random_vars(10);
 
-    let poly_of_20vars = EvaluationForm::<Fq>::new(gen_based_on_two(20));
+    let poly_of_20vars = MultilinearEvalForm::<Fq>::new(gen_based_on_two(20));
     // let twenty_vars:Vec<Fq> = gen_random_vars(20);
 
     let a_target = 2;
