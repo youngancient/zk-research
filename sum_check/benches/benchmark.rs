@@ -1,14 +1,14 @@
 use ark_bn254::Fq;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use multilinear::evaluation_form::{gen_based_on_two, gen_random_vars, EvaluationForm};
-use sum_check::sum_check::{get_sum_at_0_and_1, prove, verify};
+use multilinear::evaluation_form::{gen_based_on_two, MultilinearEvalForm};
+use sum_check::sum_check::{get_sum_over_hypercube, prove, verify};
 
 fn benchmark(c: &mut Criterion) -> () {
-    let mut poly = EvaluationForm::new(vec![Fq::from(0), Fq::from(3), Fq::from(2), Fq::from(5)]);
-    let sum1 = get_sum_at_0_and_1(&poly.eval_form);
+    let mut poly = MultilinearEvalForm::new(vec![Fq::from(0), Fq::from(3), Fq::from(2), Fq::from(5)]);
+    let sum1 = get_sum_over_hypercube(&poly.eval_form);
     let proof = prove(&mut poly.clone(), sum1);
 
-    let mut poly_of_3vars = EvaluationForm::new(vec![
+    let mut poly_of_3vars = MultilinearEvalForm::new(vec![
         Fq::from(0),
         Fq::from(0),
         Fq::from(0),
@@ -18,15 +18,15 @@ fn benchmark(c: &mut Criterion) -> () {
         Fq::from(2),
         Fq::from(5),
     ]);
-    let sum_of_3 = get_sum_at_0_and_1(&poly_of_3vars.eval_form);
+    let sum_of_3 = get_sum_over_hypercube(&poly_of_3vars.eval_form);
     let proof_of_3 = prove(&mut poly_of_3vars.clone(), sum_of_3);
 
-    let mut poly_of_10vars = EvaluationForm::<Fq>::new(gen_based_on_two(10));
-    let sum_of_10 = get_sum_at_0_and_1(&poly_of_10vars.eval_form);
+    let mut poly_of_10vars = MultilinearEvalForm::<Fq>::new(gen_based_on_two(10));
+    let sum_of_10 = get_sum_over_hypercube(&poly_of_10vars.eval_form);
     let proof_of_10 = prove(&mut poly_of_10vars.clone(), sum_of_10);
 
-    let mut poly_of_20vars = EvaluationForm::<Fq>::new(gen_based_on_two(20));
-    let sum_of_20 = get_sum_at_0_and_1(&poly_of_10vars.eval_form);
+    let mut poly_of_20vars = MultilinearEvalForm::<Fq>::new(gen_based_on_two(20));
+    let sum_of_20 = get_sum_over_hypercube(&poly_of_10vars.eval_form);
     let proof_of_20 = prove(&mut poly_of_20vars.clone(), sum_of_20);
 
     let mut group = c.benchmark_group("sum_check");
