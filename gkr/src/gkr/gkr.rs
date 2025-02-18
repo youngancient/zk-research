@@ -1,12 +1,6 @@
+pub fn gkr_prover() {}
 
-pub fn gkr_prover(){
-
-}
-
-pub fn gkr_verifier(){
-    
-}
-
+pub fn gkr_verifier() {}
 
 #[cfg(test)]
 

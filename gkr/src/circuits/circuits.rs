@@ -1,11 +1,7 @@
-use std::ops::Mul;
-
 use crate::circuits::gates::{Gate, GateOperation};
 use crate::circuits::layers::Layer;
 use ark_ff::PrimeField;
-use multilinear::evaluation_form::{
-    combine_convert, convert_to_fq_elements, MultilinearEvalForm, Op, ProdPoly, SumPoly,
-};
+use multilinear::evaluation_form::{combine_convert, MultilinearEvalForm, Op, ProdPoly, SumPoly};
 
 pub struct Circuit<F: PrimeField> {
     pub layers: Vec<Layer>,
@@ -56,8 +52,14 @@ impl<F: PrimeField> Circuit<F> {
         let layer = &self.layers[diff as usize];
         let no_of_gates = layer.gates.len() as u32;
 
-        let mut add_eval_form: Vec<F> = vec![F::zero(); 2u32.pow(no_of_gates * 2) as usize];
-        let mut mul_eval_form: Vec<F> = vec![F::zero(); 2u32.pow(no_of_gates * 2) as usize];
+        let val = if no_of_gates == 1 {
+            3
+        } else {
+            2 + (3 * to_log2(no_of_gates))
+        };
+
+        let mut add_eval_form: Vec<F> = vec![F::zero(); 2u32.pow(val) as usize];
+        let mut mul_eval_form: Vec<F> = vec![F::zero(); 2u32.pow(val) as usize];
 
         for gate in &layer.gates {
             if gate.op == GateOperation::Add {
@@ -87,7 +89,6 @@ impl<F: PrimeField> Circuit<F> {
             MultilinearEvalForm::new(mul_eval_form),
         )
     }
-
     pub fn f_b_c(
         add_i: MultilinearEvalForm<F>,
         mul_i: MultilinearEvalForm<F>,
@@ -101,7 +102,9 @@ impl<F: PrimeField> Circuit<F> {
             mul_i,
             MultilinearEvalForm::add_or_mul(w_i, w_i, Op::Mul),
         ]);
-        SumPoly { product_polys: vec![add_prod_poly,mul_prod_poly] }
+        SumPoly {
+            product_polys: vec![add_prod_poly, mul_prod_poly],
+        }
     }
 }
 
@@ -116,10 +119,10 @@ pub fn to_log2(n: u32) -> u32 {
 #[cfg(test)]
 
 mod test {
-    use ark_bn254::Fq;
-    use std::vec;
-
     use super::*;
+    use ark_bn254::Fq;
+    use multilinear::evaluation_form::convert_to_fq_elements;
+    use std::vec;
 
     fn get_circuit() -> Circuit<Fq> {
         let l2_gate1 = Gate::new(0, 1, 0, GateOperation::Mul);
@@ -298,6 +301,68 @@ mod test {
             mul_i_poly
                 .clone()
                 .evaluate(&convert_to_fq_elements(vec![1, 1, 1, 1, 1, 1, 1, 1])),
+            Fq::from(0)
+        );
+    }
+    #[test]
+    fn test_add_and_mul_i2() {
+        let circuit_example: Circuit<Fq> = get_circuit3();
+        let layer_index = 1;
+        // let inputs:Vec<u32> = vec![0, 0, 1];
+        let (add_i_poly, mul_i_poly) = circuit_example.add_and_mul_i(layer_index);
+        assert_eq!(
+            add_i_poly
+                .clone()
+                .evaluate(&convert_to_fq_elements(vec![0, 0, 0, 0, 1])),
+            Fq::from(0)
+        );
+        assert_eq!(
+            add_i_poly
+                .clone()
+                .evaluate(&convert_to_fq_elements(vec![1, 1, 0, 1, 1])),
+            Fq::from(1)
+        );
+        assert_eq!(
+            mul_i_poly
+                .clone()
+                .evaluate(&convert_to_fq_elements(vec![1, 1, 1, 0, 1])),
+            Fq::from(0)
+        );
+        assert_eq!(
+            mul_i_poly
+                .clone()
+                .evaluate(&convert_to_fq_elements(vec![0, 0, 0, 0, 1])),
+            Fq::from(1)
+        );
+    }
+    #[test]
+    fn test_add_and_mul_i3() {
+        let circuit_example: Circuit<Fq> = get_circuit3();
+        let layer_index = 0;
+        // let inputs:Vec<u32> = vec![0, 0, 1];
+        let (add_i_poly, mul_i_poly) = circuit_example.add_and_mul_i(layer_index);
+        assert_eq!(
+            add_i_poly
+                .clone()
+                .evaluate(&convert_to_fq_elements(vec![0, 0, 0])),
+            Fq::from(0)
+        );
+        assert_eq!(
+            add_i_poly
+                .clone()
+                .evaluate(&convert_to_fq_elements(vec![0, 0, 1])),
+            Fq::from(1)
+        );
+        assert_eq!(
+            mul_i_poly
+                .clone()
+                .evaluate(&convert_to_fq_elements(vec![1, 1, 1])),
+            Fq::from(0)
+        );
+        assert_eq!(
+            mul_i_poly
+                .clone()
+                .evaluate(&convert_to_fq_elements(vec![0, 0, 1])),
             Fq::from(0)
         );
     }

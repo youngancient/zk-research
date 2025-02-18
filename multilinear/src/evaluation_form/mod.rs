@@ -134,7 +134,17 @@ pub fn convert_to_fq_elements(values: Vec<u32>) -> Vec<Fq> {
     values.into_iter().map(|x| Fq::from(x)).collect()
 }
 
-// this function takes in
+// this function takes in a vec of indices e.g [1,2,3]
+// converts each into binary and concatenate the result based on the digit
+// e.g if digit is 2 -> 
+// 1 -> 01; 2 -> 10; 3 -> 11
+// output -> 011011
+
+// if digit is 3 ->
+// 1 -> 001 ; 2 -> 010; 3 -> 011;
+// output-> 001010011
+
+// it returns a decimal output d of the concatenated binary values
 pub fn combine_convert(values: Vec<u32>, digit: usize) -> u32 {
     let binary_string: String = values
         .iter()
@@ -283,176 +293,177 @@ impl<F: PrimeField> SumPoly<F> {
 pub mod tests {
     use super::*;
 
-    // #[test]
-    // fn test_create_rep() {
-    //     let eval_form =
-    //         MultilinearEvalForm::new(vec![Fq::from(1), Fq::from(2), Fq::from(3), Fq::from(4)]);
-    //     assert_eq!(eval_form.number_of_variables, 2);
-    //     assert_eq!(eval_form.boolean_hypercube, vec![0, 1, 2, 3]);
-    // }
+    #[test]
+    fn test_create_rep() {
+        let eval_form =
+            MultilinearEvalForm::new(vec![Fq::from(1), Fq::from(2), Fq::from(3), Fq::from(4)]);
+        assert_eq!(eval_form.number_of_variables, 2);
+        assert_eq!(eval_form.boolean_hypercube, vec![0, 1, 2, 3]);
+    }
 
-    // #[test]
-    // #[should_panic]
-    // fn test_create_rep_fail() {
-    //     MultilinearEvalForm::new(vec![
-    //         Fq::from(1),
-    //         Fq::from(2),
-    //         Fq::from(3),
-    //         Fq::from(4),
-    //         Fq::from(15),
-    //     ]);
-    // }
+    #[test]
+    #[should_panic]
+    fn test_create_rep_fail() {
+        MultilinearEvalForm::new(vec![
+            Fq::from(1),
+            Fq::from(2),
+            Fq::from(3),
+            Fq::from(4),
+            Fq::from(15),
+        ]);
+    }
 
-    // #[test]
-    // fn test_finding_pairs() {
-    //     let num = 4;
-    //     let boolean_hypercube_of_2_vars = (0..num).collect::<Vec<u32>>();
-    //     // Since we have just 2 bits representing two vars, -> a , b
-    //     // 1 -> our target is b
-    //     // 2 -> our target is a
-    //     let a_target = 2;
-    //     let b_target = 1;
-    //     let pairs_for_a = find_pairs_with_xor(&boolean_hypercube_of_2_vars, a_target);
-    //     assert_eq!(pairs_for_a, vec![(0, 2), (1, 3)]);
+    #[test]
+    fn test_finding_pairs() {
+        let num = 4;
+        let boolean_hypercube_of_2_vars = (0..num).collect::<Vec<u32>>();
+        // Since we have just 2 bits representing two vars, -> a , b
+        // 1 -> our target is b
+        // 2 -> our target is a
+        let a_target = 2;
+        let b_target = 1;
+        let pairs_for_a = find_pairs_with_xor(&boolean_hypercube_of_2_vars, a_target);
+        assert_eq!(pairs_for_a, vec![(0, 2), (1, 3)]);
 
-    //     let pairs_for_b = find_pairs_with_xor(&boolean_hypercube_of_2_vars, b_target);
-    //     assert_eq!(pairs_for_b, vec![(0, 1), (2, 3)]);
-    // }
+        let pairs_for_b = find_pairs_with_xor(&boolean_hypercube_of_2_vars, b_target);
+        assert_eq!(pairs_for_b, vec![(0, 1), (2, 3)]);
+    }
 
-    // #[test]
-    // fn test_finding_pairs_for_3vars() {
-    //     let num = 8;
-    //     let boolean_hypercube_of_2_vars = (0..num).collect::<Vec<u32>>();
-    //     // Since we have just 2 bits representing two vars, -> a , b
-    //     // 01 -> our target is b
-    //     // 10 -> our target is a
-    //     let a_target = 4;
-    //     let b_target = 2;
-    //     let c_target = 1;
+    #[test]
+    fn test_finding_pairs_for_3vars() {
+        let num = 8;
+        let boolean_hypercube_of_2_vars = (0..num).collect::<Vec<u32>>();
+        // Since we have just 2 bits representing two vars, -> a , b
+        // 01 -> our target is b
+        // 10 -> our target is a
+        let a_target = 4;
+        let b_target = 2;
+        let c_target = 1;
 
-    //     let pairs_for_a = find_pairs_with_xor(&boolean_hypercube_of_2_vars, a_target);
-    //     assert_eq!(pairs_for_a, vec![(0, 4), (1, 5), (2, 6), (3, 7)]);
+        let pairs_for_a = find_pairs_with_xor(&boolean_hypercube_of_2_vars, a_target);
+        assert_eq!(pairs_for_a, vec![(0, 4), (1, 5), (2, 6), (3, 7)]);
 
-    //     let pairs_for_b = find_pairs_with_xor(&boolean_hypercube_of_2_vars, b_target);
-    //     assert_eq!(pairs_for_b, vec![(0, 2), (1, 3), (4, 6), (5, 7)]);
+        let pairs_for_b = find_pairs_with_xor(&boolean_hypercube_of_2_vars, b_target);
+        assert_eq!(pairs_for_b, vec![(0, 2), (1, 3), (4, 6), (5, 7)]);
 
-    //     let pairs_for_c = find_pairs_with_xor(&boolean_hypercube_of_2_vars, c_target);
-    //     assert_eq!(pairs_for_c, vec![(0, 1), (2, 3), (4, 5), (6, 7)]);
-    // }
+        let pairs_for_c = find_pairs_with_xor(&boolean_hypercube_of_2_vars, c_target);
+        assert_eq!(pairs_for_c, vec![(0, 1), (2, 3), (4, 5), (6, 7)]);
+    }
 
-    // #[test]
-    // fn test_interpolate_and_evaluate() {
-    //     let y_values = (Fq::from(1), Fq::from(2));
-    //     let r = Fq::from(3);
-    //     assert_eq!(interpolate_and_evaluate(y_values, r), Fq::from(4));
-    // }
+    #[test]
+    fn test_interpolate_and_evaluate() {
+        let y_values = (Fq::from(1), Fq::from(2));
+        let r = Fq::from(3);
+        assert_eq!(interpolate_and_evaluate(y_values, r), Fq::from(4));
+    }
 
-    // #[test]
-    // fn test_partial_evaluate_1vars() {
-    //     let mut poly = MultilinearEvalForm::new(vec![Fq::from(4), Fq::from(7)]);
-    //     poly.partial_evaluate(1, Fq::from(3));
-    //     assert_eq!(poly.eval_form, vec![Fq::from(13)]);
-    //     assert_eq!(poly.number_of_variables, 1);
-    // }
+    #[test]
+    fn test_partial_evaluate_1vars() {
+        let mut poly = MultilinearEvalForm::new(vec![Fq::from(4), Fq::from(7)]);
+        poly.partial_evaluate(1, Fq::from(3));
+        assert_eq!(poly.eval_form, vec![Fq::from(13)]);
+        assert_eq!(poly.number_of_variables, 1);
+    }
 
-    // #[test]
-    // fn test_partial_evaluate_2vars() {
-    //     let mut poly =
-    //         MultilinearEvalForm::new(vec![Fq::from(0), Fq::from(3), Fq::from(2), Fq::from(5)]);
-    //     poly.partial_evaluate(1, Fq::from(2));
-    //     assert_eq!(poly.eval_form, vec![Fq::from(4), Fq::from(7)]);
-    //     assert_eq!(poly.number_of_variables, 2);
-    // }
+    #[test]
+    fn test_partial_evaluate_2vars() {
+        let mut poly =
+            MultilinearEvalForm::new(vec![Fq::from(0), Fq::from(3), Fq::from(2), Fq::from(5)]);
+        poly.partial_evaluate(1, Fq::from(2));
+        assert_eq!(poly.eval_form, vec![Fq::from(4), Fq::from(7)]);
+        assert_eq!(poly.number_of_variables, 2);
+    }
 
-    // #[test]
-    // fn test_partial_evaluate_3vars() {
-    //     let mut poly = MultilinearEvalForm::new(vec![
-    //         Fq::from(0),
-    //         Fq::from(0),
-    //         Fq::from(0),
-    //         Fq::from(3),
-    //         Fq::from(0),
-    //         Fq::from(0),
-    //         Fq::from(2),
-    //         Fq::from(5),
-    //     ]);
-    //     poly.partial_evaluate(3, Fq::from(3));
-    //     assert_eq!(
-    //         poly.eval_form,
-    //         vec![Fq::from(0), Fq::from(9), Fq::from(0), Fq::from(11)]
-    //     );
-    //     assert_eq!(poly.number_of_variables, 3);
-    // }
+    #[test]
+    fn test_partial_evaluate_3vars() {
+        let mut poly = MultilinearEvalForm::new(vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(3),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+            Fq::from(5),
+        ]);
+        poly.partial_evaluate(3, Fq::from(3));
+        assert_eq!(
+            poly.eval_form,
+            vec![Fq::from(0), Fq::from(9), Fq::from(0), Fq::from(11)]
+        );
+        assert_eq!(poly.number_of_variables, 3);
+    }
 
-    // #[test]
-    // fn test_evaluate_for_2vars() {
-    //     let mut eval_form =
-    //         MultilinearEvalForm::new(vec![Fq::from(0), Fq::from(3), Fq::from(2), Fq::from(5)]);
-    //     assert_eq!(
-    //         eval_form.evaluate(&vec![Fq::from(2), Fq::from(3)]),
-    //         Fq::from(13)
-    //     );
-    // }
+    #[test]
+    fn test_evaluate_for_2vars() {
+        let mut eval_form =
+            MultilinearEvalForm::new(vec![Fq::from(0), Fq::from(3), Fq::from(2), Fq::from(5)]);
+        assert_eq!(
+            eval_form.evaluate(&vec![Fq::from(2), Fq::from(3)]),
+            Fq::from(13)
+        );
+    }
 
-    // #[test]
-    // fn test_to_bytes_for_2vars() {
-    //     let polynomial =
-    //         MultilinearEvalForm::new(vec![Fq::from(0), Fq::from(3), Fq::from(2), Fq::from(5)]);
-    //     // Compute the expected byte representation manually
-    //     let expected_bytes: Vec<u8> = polynomial
-    //         .eval_form
-    //         .iter()
-    //         .flat_map(|coeff| coeff.into_bigint().to_bytes_be())
-    //         .collect();
+    #[test]
+    fn test_to_bytes_for_2vars() {
+        let polynomial =
+            MultilinearEvalForm::new(vec![Fq::from(0), Fq::from(3), Fq::from(2), Fq::from(5)]);
+        // Compute the expected byte representation manually
+        let expected_bytes: Vec<u8> = polynomial
+            .eval_form
+            .iter()
+            .flat_map(|coeff| coeff.into_bigint().to_bytes_be())
+            .collect();
 
-    //     // Get actual bytes using the to_bytes function
-    //     let actual_bytes = MultilinearEvalForm::to_bytes(&polynomial.eval_form);
+        // Get actual bytes using the to_bytes function
+        let actual_bytes = MultilinearEvalForm::to_bytes(&polynomial.eval_form);
 
-    //     // Assert that both byte representations match
-    //     assert_eq!(actual_bytes, expected_bytes);
-    // }
-    // #[test]
-    // fn test_evaluate_for_3vars() {
-    //     let mut eval_form = MultilinearEvalForm::new(vec![
-    //         Fq::from(0),
-    //         Fq::from(0),
-    //         Fq::from(0),
-    //         Fq::from(3),
-    //         Fq::from(0),
-    //         Fq::from(0),
-    //         Fq::from(2),
-    //         Fq::from(5),
-    //     ]);
-    //     assert_eq!(
-    //         eval_form.evaluate(&vec![Fq::from(4), Fq::from(2), Fq::from(3)]),
-    //         Fq::from(34)
-    //     );
-    // }
+        // Assert that both byte representations match
+        assert_eq!(actual_bytes, expected_bytes);
+    }
+    #[test]
+    fn test_evaluate_for_3vars() {
+        let mut eval_form = MultilinearEvalForm::new(vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(3),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+            Fq::from(5),
+        ]);
+        assert_eq!(
+            eval_form.evaluate(&vec![Fq::from(4), Fq::from(2), Fq::from(3)]),
+            Fq::from(34)
+        );
+    }
 
-    // fn get_prod_poly() -> ProdPoly<Fq> {
-    //     let polynomials = vec![
-    //         MultilinearEvalForm::new(vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(3)]),
-    //         MultilinearEvalForm::new(vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(2)]),
-    //     ];
-    //     let prod_poly = ProdPoly::new(polynomials);
-    //     prod_poly
-    // }
-    // #[test]
-    // fn test_prod_poly_creation() {
-    //     let prod_poly = get_prod_poly();
-    //     assert_eq!(prod_poly.no_of_vars, 2);
-    // }
+    fn get_prod_poly() -> ProdPoly<Fq> {
+        let polynomials = vec![
+            MultilinearEvalForm::new(vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(3)]),
+            MultilinearEvalForm::new(vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(2)]),
+        ];
+        let prod_poly = ProdPoly::new(polynomials);
+        prod_poly
+    }
+    #[test]
+    fn test_prod_poly_creation() {
+        let prod_poly = get_prod_poly();
+        assert_eq!(prod_poly.no_of_vars, 2);
+    }
 
-    // #[test]
-    // fn test_prod_poly_eval() {
-    //     let mut prod_poly = get_prod_poly();
-    //     let eval = prod_poly.evaluate(&vec![Fq::from(1), Fq::from(2)]);
-    //     assert_eq!(eval, Fq::from(24));
-    // }
+    #[test]
+    fn test_prod_poly_eval() {
+        let mut prod_poly = get_prod_poly();
+        let eval = prod_poly.evaluate(&vec![Fq::from(1), Fq::from(2)]);
+        assert_eq!(eval, Fq::from(24));
+    }
 
     #[test]
     fn test_combine_convert() {
         assert_eq!(combine_convert(vec![1, 2, 3], 3), 83);
+        assert_eq!(combine_convert(vec![1, 0, 2], 2), 18);
     }
 
     #[test]
