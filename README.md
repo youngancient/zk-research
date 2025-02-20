@@ -1,2 +1,2 @@
 # zk-research
-ZK cohort at web3bridge
+ZK cohort at SublinearLabs

@@ -96,7 +96,7 @@ impl<F: PrimeField> MultilinearEvalForm<F> {
         }
         let mut result = vec![F::zero(); 2u32.pow(length as u32) as usize];
         for (i, element_a) in w_b.eval_form.iter().enumerate() {
-            for (j, element_b) in w_c.eval_form.iter().enumerate() {
+            for (j, element_b) in w_b.eval_form.iter().enumerate() {
                 let result_index =
                     combine_convert(vec![i as u32, j as u32], w_b.number_of_variables as usize);
                 result[result_index as usize] = match op {
