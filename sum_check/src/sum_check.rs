@@ -223,6 +223,10 @@ pub fn partial_verify_prod_poly<F: PrimeField>(
     transcript: &mut Transcript<F, Keccak256>,
     proof: Proof<F>,
 ) -> (bool, F, Vec<F>) {
+    if proof.polynomials.is_empty() {
+        return (false, proof.sum, vec![]);
+    }
+
     transcript.append(proof.sum.into_bigint().to_bytes_be().as_slice());
     let mut claimed_sum = proof.sum;
     let mut random_challenges: Vec<F> = Vec::new();
