@@ -5,6 +5,10 @@ use std::collections::HashSet;
 // update this to use binary instead of decimal
 #[derive(Clone)]
 
+// ==============================================================//
+//    @note Normal MUltilinear Poly
+// =============================================================//
+
 pub struct MultilinearEvalForm<F: PrimeField> {
     pub number_of_variables: u32,
     pub eval_form: Vec<F>,
@@ -85,9 +89,9 @@ impl<F: PrimeField> MultilinearEvalForm<F> {
     // the assumption here are:
     // both w_b and w_c are have the same number of variables
     /// both w_b and w_c have different variables
-    pub fn add_or_mul(
+    pub fn tensor_add_or_mul(
         w_b: &MultilinearEvalForm<F>,
-        w_c: &MultilinearEvalForm<F>,
+        w_c: &MultilinearEvalForm<F>, // might change this to accept just one poly
         op: Op,
     ) -> MultilinearEvalForm<F> {
         let length = w_b.eval_form.len();
@@ -96,7 +100,7 @@ impl<F: PrimeField> MultilinearEvalForm<F> {
         }
         let mut result = vec![F::zero(); 2u32.pow(length as u32) as usize];
         for (i, element_a) in w_b.eval_form.iter().enumerate() {
-            for (j, element_b) in w_b.eval_form.iter().enumerate() {
+            for (j, element_b) in w_c.eval_form.iter().enumerate() {
                 let result_index =
                     combine_convert(vec![i as u32, j as u32], w_b.number_of_variables as usize);
                 result[result_index as usize] = match op {
@@ -136,7 +140,7 @@ pub fn convert_to_fq_elements(values: Vec<u32>) -> Vec<Fq> {
 
 // this function takes in a vec of indices e.g [1,2,3]
 // converts each into binary and concatenate the result based on the digit
-// e.g if digit is 2 -> 
+// e.g if digit is 2 ->
 // 1 -> 01; 2 -> 10; 3 -> 11
 // output -> 011011
 
@@ -189,10 +193,13 @@ pub fn gen_based_on_two<F: PrimeField>(n: u32) -> Vec<F> {
     gen_random_vars(to_pow_two)
 }
 
+// ==============================================================//
+//    @note Product Poly
+// =============================================================//
 
-// product poly
-// instead of getting the prod of 2 polynomials : 3ab x 2ab
-// we represent the 2 polynomials in the form: 3ab x 2ab
+// instead of getting the prod of multiple polynomials such as: 3ab x 2ab
+// we represent the polynomials as a Prod poly struct containg the multilinear polys: 3ab , 2ab
+
 #[derive(Clone)]
 pub struct ProdPoly<F: PrimeField> {
     pub polynomials: Vec<MultilinearEvalForm<F>>,
@@ -256,13 +263,22 @@ impl<F: PrimeField> ProdPoly<F> {
     }
 }
 
-// @note sum of prod polys
+// ==============================================================//
+//    @note Sum of Product Polys
+// =============================================================//
+
+// instead of getting the sum of multiple Prod polys : (3ab x 2ab) + (4ab x 8ab)
+// we represent the polynomials as Sum Poly struct containing the product polys : (3ab x 2ab),(4ab x 8ab)
+#[derive(Clone)]
 pub struct SumPoly<F: PrimeField> {
     pub product_polys: Vec<ProdPoly<F>>,
 }
 
 impl<F: PrimeField> SumPoly<F> {
     pub fn new(product_polys: Vec<ProdPoly<F>>) -> Self {
+        if product_polys.is_empty() {
+            panic!("product polys cannot be empty");
+        }
         Self { product_polys }
     }
     pub fn partial_evaluate(&mut self, variable_position: u32, value: F) {
@@ -271,12 +287,14 @@ impl<F: PrimeField> SumPoly<F> {
         }
     }
     pub fn evaluate(&mut self, variables: &Vec<F>) -> F {
-        let mut result: F = F::one();
+        let mut result: F = F::zero();
         for poly in &mut self.product_polys {
-            result += poly.evaluate(variables)
+            let m = poly.evaluate(variables);
+            result += m;
         }
         result
     }
+
     // this function reduces the sum poly to a simple boolean hypercube representation in evaluation form
     pub fn reduce(&self) -> Vec<F> {
         let length = self.product_polys[0].no_of_vars;
@@ -289,6 +307,12 @@ impl<F: PrimeField> SumPoly<F> {
             }
         }
         result
+    }
+
+    // get number of variables
+    pub fn get_no_of_vars(&self) -> u32 {
+        // not sure if this is correct
+        self.product_polys[0].no_of_vars
     }
 }
 
@@ -450,6 +474,16 @@ pub mod tests {
         let prod_poly = ProdPoly::new(polynomials);
         prod_poly
     }
+    fn get_sum_of_prod_poly() -> SumPoly<Fq> {
+        let polynomials = vec![
+            MultilinearEvalForm::new(vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(3)]),
+            MultilinearEvalForm::new(vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(2)]),
+        ];
+        let prod_poly = ProdPoly::new(polynomials);
+        let sum_poly = SumPoly::new(vec![prod_poly.clone(), prod_poly]);
+        sum_poly
+    }
+
     #[test]
     fn test_prod_poly_creation() {
         let prod_poly = get_prod_poly();
@@ -470,26 +504,42 @@ pub mod tests {
     }
 
     #[test]
-    fn add_w_b_w_c() {
+    fn tensor_add() {
         let w_b =
             MultilinearEvalForm::new(vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(3)]);
         let w_c =
             MultilinearEvalForm::new(vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(2)]);
         assert_eq!(
-            MultilinearEvalForm::add_or_mul(&w_b, &w_c, Op::Add).eval_form,
+            MultilinearEvalForm::tensor_add_or_mul(&w_b, &w_c, Op::Add).eval_form,
             convert_to_fq_elements(vec![0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0, 2, 3, 3, 3, 5])
         );
     }
 
     #[test]
-    fn mul_w_b_w_c() {
+    fn tensor_mul() {
         let w_b =
             MultilinearEvalForm::new(vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(3)]);
         let w_c =
             MultilinearEvalForm::new(vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(2)]);
         assert_eq!(
-            MultilinearEvalForm::add_or_mul(&w_b, &w_c, Op::Mul).eval_form,
+            MultilinearEvalForm::tensor_add_or_mul(&w_b, &w_c, Op::Mul).eval_form,
             convert_to_fq_elements(vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6])
+        );
+    }
+
+    #[test]
+    fn test_sum_of_prod_poly_eval() {
+        let mut sum_poly = get_sum_of_prod_poly();
+        let eval = sum_poly.evaluate(&vec![Fq::from(1), Fq::from(2)]);
+        assert_eq!(eval, Fq::from(48));
+    }
+
+    #[test]
+    fn test_reduce_sum_of_prod_poly() {
+        let sum_poly = get_sum_of_prod_poly();
+        assert_eq!(
+            sum_poly.reduce(),
+            vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(12)]
         );
     }
 }
