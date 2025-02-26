@@ -189,9 +189,11 @@ pub fn gen_based_on_two<F: PrimeField>(n: u32) -> Vec<F> {
     gen_random_vars(to_pow_two)
 }
 
+
 // product poly
 // instead of getting the prod of 2 polynomials : 3ab x 2ab
 // we represent the 2 polynomials in the form: 3ab x 2ab
+#[derive(Clone)]
 pub struct ProdPoly<F: PrimeField> {
     pub polynomials: Vec<MultilinearEvalForm<F>>,
     pub no_of_vars: u32,
@@ -215,10 +217,11 @@ impl<F: PrimeField> ProdPoly<F> {
         }
     }
 
-    pub fn partial_evaluate(&mut self, variable_position: u32, value: F) {
+    pub fn partial_evaluate(&mut self, variable_position: u32, value: F) -> Vec<F> {
         for poly in &mut self.polynomials {
             poly.partial_evaluate(variable_position, value);
         }
+        self.reduce()
     }
 
     pub fn evaluate(&mut self, variables: &Vec<F>) -> F {
@@ -253,7 +256,7 @@ impl<F: PrimeField> ProdPoly<F> {
     }
 }
 
-// finish add poly
+// @note sum of prod polys
 pub struct SumPoly<F: PrimeField> {
     pub product_polys: Vec<ProdPoly<F>>,
 }
