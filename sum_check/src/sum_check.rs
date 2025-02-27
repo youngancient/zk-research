@@ -14,6 +14,10 @@ pub struct Proof<F: PrimeField> {
     polynomials: Vec<Vec<F>>,
 }
 
+// ==============================================================//
+//    @note sumcheck over a multilinear poly
+// =============================================================//
+
 // sums the univariate poly [a1,a2] at a= 0 and a = 1
 pub fn get_sum_over_hypercube<F: PrimeField>(polynomial: &Vec<F>) -> F {
     let sum: F = polynomial.iter().sum();
