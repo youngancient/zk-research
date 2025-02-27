@@ -1,7 +1,8 @@
+use ark_bn254::Fq;
 use ark_ff::{BigInteger, PrimeField};
 use fiat_shamir::fiat_shamir::Transcript;
 use multilinear::evaluation_form::{
-    convert_to_fq_elements, interpolate_and_evaluate, MultilinearEvalForm, ProdPoly,
+    convert_to_fq_elements, interpolate_and_evaluate, MultilinearEvalForm, ProdPoly, SumPoly,
 };
 use sha3::{Digest, Keccak256};
 use univariate::dense_polynomial::UnivariatePolynomialDense;
@@ -57,11 +58,6 @@ pub fn evaluate_at_two_vars<F: PrimeField>(poly_vec: &Vec<F>, var: usize) -> Vec
     let (left, right) = split_by_var(&poly_vec, var);
     vec![left.iter().sum::<F>(), right.iter().sum::<F>()]
 }
-
-// pub fn evaluate_at_n_vars<F:PrimeField>(poly_vec: &Vec<F>, var: usize){
-//     println!("Var -> {var}");
-//     // todo!()
-// }
 
 // @note proves that the claim_sum was derived from the polynomial
 // returns a proof
@@ -150,7 +146,9 @@ pub fn partial_verify<F: PrimeField>(
     (true, claimed_sum, random_challenges)
 }
 
-// @note sumcheck over a product of 2 multilinear polys
+// ==============================================================//
+//    @note sumcheck over a product of multilinear polys
+// =============================================================//
 
 // prove sum over the Boolean HC of a prod poly
 pub fn prove_prod_poly<F: PrimeField>(claim_sum: F, prod_poly: &mut ProdPoly<F>) -> Proof<F> {
@@ -198,7 +196,7 @@ pub fn verify_prod_poly<F: PrimeField>(proof: Proof<F>, prod_poly: &mut ProdPoly
     let mut transcript: Transcript<F, Keccak256> = Transcript::init(Keccak256::new());
     transcript.append(&prod_poly.to_bytes());
     let (is_partially_verified, claimed_sum, random_challenges) =
-        partial_verify_prod_poly(&mut transcript, proof);
+        partial_verify_composite_poly(&mut transcript, proof);
     if !is_partially_verified {
         return false;
     }
@@ -217,7 +215,9 @@ pub fn verify_prod_poly<F: PrimeField>(proof: Proof<F>, prod_poly: &mut ProdPoly
 // bool -> if the round checks were successful
 // F -> the last claimed_sum
 // Vec<F> -> A list of all the random challenges (r)
-pub fn partial_verify_prod_poly<F: PrimeField>(
+
+// @note partially verify both prod poly and sum poly
+pub fn partial_verify_composite_poly<F: PrimeField>(
     transcript: &mut Transcript<F, Keccak256>,
     proof: Proof<F>,
 ) -> (bool, F, Vec<F>) {
@@ -256,9 +256,79 @@ pub fn interpolate_to_univariate<F: PrimeField>(poly: &Vec<F>) -> UnivariatePoly
     UnivariatePolynomialDense::interpolate(x_values, poly.to_vec())
 }
 
-// @note sumcheck over a product of 2 multilinear polys
+// ==============================================================//
+//    @note sumcheck over the sum of product of multilinear polys
+// =============================================================//
 
+pub fn prove_sum_poly<F: PrimeField>(claim_sum: F, sum_poly: &mut SumPoly<F>) -> Proof<F> {
+    let mut transcript: Transcript<F, Keccak256> = Transcript::init(Keccak256::new());
+    transcript.append(&sum_poly.to_bytes());
 
+    partial_prove_sum_poly(sum_poly, claim_sum, &mut transcript)
+}
+
+pub fn partial_prove_sum_poly<F: PrimeField>(
+    sum_poly: &mut SumPoly<F>,
+    claim_sum: F,
+    transcript: &mut Transcript<F, Keccak256>,
+) -> Proof<F> {
+    transcript.append(claim_sum.into_bigint().to_bytes_be().as_slice());
+
+    let mut proof: Proof<F> = Proof {
+        sum: F::zero(),
+        polynomials: Vec::new(),
+    };
+    proof.sum = claim_sum;
+
+    for i in 0..sum_poly.get_no_of_vars() {
+        let mut univariate_poly = vec![F::zero(); 3];
+        for prod_poly in &sum_poly.product_polys {
+            let sum1: F = prod_poly
+                .clone()
+                .partial_evaluate(i + 1, F::zero())
+                .iter()
+                .sum();
+            univariate_poly[0] += sum1;
+
+            let sum2: F = prod_poly
+                .clone()
+                .partial_evaluate(i + 1, F::one())
+                .iter()
+                .sum();
+            univariate_poly[1] += sum2;
+
+            let sum3: F = prod_poly
+                .clone()
+                .partial_evaluate(i + 1, F::from(2))
+                .iter()
+                .sum();
+            univariate_poly[2] += sum3;
+        }
+        transcript.append(&MultilinearEvalForm::to_bytes(&univariate_poly));
+        let challenge = transcript.hash();
+        sum_poly.partial_evaluate(i + 1, challenge);
+        proof.polynomials.push(univariate_poly);
+    }
+    proof
+}
+
+//  @note verify the proofs of the prove_prod_poly
+pub fn verify_sum_poly<F: PrimeField>(proof: Proof<F>, sum_poly: &mut SumPoly<F>) -> bool {
+    let mut transcript: Transcript<F, Keccak256> = Transcript::init(Keccak256::new());
+    transcript.append(&sum_poly.to_bytes());
+    let (is_partially_verified, claimed_sum, random_challenges) =
+        partial_verify_composite_poly(&mut transcript, proof);
+    if !is_partially_verified {
+        return false;
+    }
+    let derived_sum = sum_poly.evaluate(&random_challenges);
+
+    // oracle check
+    if claimed_sum != derived_sum {
+        return false;
+    }
+    true
+}
 
 #[cfg(test)]
 
@@ -318,127 +388,133 @@ mod tests {
         prod_poly
     }
 
-    // #[test]
-    // fn test_get_sum_over_hypercube() {
-    //     let sum1 = get_sum_over_hypercube(&get_test_poly().eval_form);
-    //     assert_eq!(sum1, Fq::from(10));
-    //     let sum2 = get_sum_over_hypercube(&get_test_poly2().eval_form);
-    //     assert_eq!(sum2, Fq::from(12));
-    // }
-
-    // #[test]
-    // fn test_evaluate_at_two_vars() {
-    //     let mut poly1 = get_test_poly();
-
-    //     assert_eq!(
-    //         evaluate_at_two_vars(&mut poly1, 1 as usize),
-    //         vec![Fq::from(3), Fq::from(7)]
-    //     );
-    //     let mut poly2 = get_test_poly2();
-
-    //     assert_eq!(
-    //         evaluate_at_two_vars(&mut poly2, 1 as usize),
-    //         vec![Fq::from(2), Fq::from(10)]
-    //     );
-
-    //     let mut poly3 = get_test_poly3();
-
-    //     assert_eq!(
-    //         evaluate_at_two_vars(&mut poly3, 1 as usize),
-    //         vec![Fq::from(3), Fq::from(7)]
-    //     );
-    //     let mut poly4 = get_test_poly4();
-    //     assert_eq!(
-    //         evaluate_at_two_vars(&mut poly4, 1 as usize),
-    //         vec![Fq::from(0), Fq::from(5)]
-    //     );
-    // }
-
-    // #[test]
-    // fn test_prove() {
-    //     let mut poly1 = get_test_poly();
-    //     let sum = get_sum_over_hypercube(&poly1.eval_form);
-    //     let proof = prove(&mut poly1, sum);
-    //     assert_eq!(proof.sum, Fq::from(10));
-    // }
-    // #[test]
-    // fn test_partial_eval() {
-    //     let mut polynomial = MultilinearEvalForm::new(vec![
-    //         Fq::from(0),
-    //         Fq::from(0),
-    //         Fq::from(0),
-    //         Fq::from(3),
-    //         Fq::from(0),
-    //         Fq::from(0),
-    //         Fq::from(2),
-    //         Fq::from(5),
-    //     ]);
-    //     let challenges = [Fq::from(1),Fq::from(2),Fq::from(3)];
-    //     for i in 1..=polynomial.number_of_variables {
-    //         println!("polynomial -> {:?}",polynomial.eval_form);
-    //         let fl = polynomial.clone().partial_evaluate(i, Fq::from(0));
-    //         let sl = polynomial.clone().partial_evaluate(i, Fq::from(1));
-
-    //        let eval = polynomial.partial_evaluate(i, challenges[(i - 1) as usize]);
-    //        println!("eval form -> {:?}",eval);
-    //     }
-    // }
-    // #[test]
-    // fn test_prove2() {
-    //     let mut poly2 = get_test_poly2u();
-    //     let sum = get_sum_over_hypercube(&poly2.eval_form);
-    //     let proof = prove(&mut poly2, sum);
-    //     assert_eq!(proof.sum, Fq::from(12));
-    // }
-
-    // #[test]
-    // fn test_prove_and_verify_valid_proof() {
-    //     let mut poly1 = get_test_poly();
-    //     let sum = get_sum_over_hypercube(&poly1.eval_form);
-    //     let proof = prove(&mut poly1.clone(), sum);
-    //     let is_valid = verify(proof, &mut poly1);
-    //     assert_eq!(is_valid, true);
-    // }
-
-    // #[test]
-    // fn test_prove_and_verify_valid_proof2() {
-    //     let mut poly2 = get_test_poly2();
-    //     let sum = get_sum_over_hypercube(&poly2.eval_form);
-    //     let proof = prove(&mut poly2.clone(), sum);
-    //     let is_valid = verify(proof, &mut poly2);
-    //     assert_eq!(is_valid, true);
-    // }
-
-    // #[test]
-    // fn test_prove_and_verify_valid_proof_of_2vars() {
-    //     let mut poly3 = get_test_poly3();
-    //     let sum = get_sum_over_hypercube(&poly3.eval_form);
-    //     let proof = prove(&mut poly3.clone(), sum);
-    //     let is_valid = verify(proof, &mut poly3);
-    //     assert_eq!(is_valid, true);
-    // }
-
-    // #[test]
-    // fn test_prove_and_verify_invalid_proof() {
-    //     let mut poly1 = get_test_poly();
-    //     let sum = Fq::from(100000); // guessed sum
-    //     let invalid_proof = prove(&mut poly1.clone(), sum); // invalid proof
-    //     let is_valid = verify(invalid_proof, &mut poly1);
-    //     assert_eq!(is_valid, false);
-    // }
-
-    #[test]
-    fn test_prove_prod_poly() {
-        let mut prod_poly = get_prod_poly();
-        let claim_sum = prod_poly.reduce().iter().sum();
-        prove_prod_poly(claim_sum, &mut prod_poly);
+    fn get_sum_of_prod_poly() -> SumPoly<Fq> {
+        let polynomials = vec![
+            MultilinearEvalForm::new(vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(3)]),
+            MultilinearEvalForm::new(vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(2)]),
+        ];
+        let prod_poly = ProdPoly::new(polynomials);
+        let sum_poly = SumPoly::new(vec![prod_poly.clone(), prod_poly]);
+        sum_poly
+    }
+    fn get_sum_of_prod_poly2() -> SumPoly<Fq> {
+        let polynomial1 = vec![MultilinearEvalForm::new(convert_to_fq_elements(vec![
+            0, 0, 0, 3, 0, 0, 2, 5,
+        ]))];
+        let polynomial2 = vec![MultilinearEvalForm::new(convert_to_fq_elements(vec![
+            0, 0, 0, 6, 3, 3, 3, 9,
+        ]))];
+        let prod_poly = ProdPoly::new(polynomial1);
+        let prod_poly2 = ProdPoly::new(polynomial2);
+        let sum_poly = SumPoly::new(vec![prod_poly, prod_poly2]);
+        sum_poly
     }
 
     #[test]
-    fn test_prove_prod_poly2() {
-        let mut prod_poly = get_prod_poly2();
-        let claim_sum = prod_poly.reduce().iter().sum();
-        prove_prod_poly(claim_sum, &mut prod_poly);
+    fn test_get_sum_over_hypercube() {
+        let sum1 = get_sum_over_hypercube(&get_test_poly().eval_form);
+        assert_eq!(sum1, Fq::from(10));
+        let sum2 = get_sum_over_hypercube(&get_test_poly2().eval_form);
+        assert_eq!(sum2, Fq::from(12));
+    }
+
+    #[test]
+    fn test_evaluate_at_two_vars() {
+        let mut poly1 = get_test_poly();
+
+        assert_eq!(
+            evaluate_at_two_vars(&mut poly1.eval_form, 1 as usize),
+            vec![Fq::from(3), Fq::from(7)]
+        );
+        let mut poly2 = get_test_poly2();
+
+        assert_eq!(
+            evaluate_at_two_vars(&mut poly2.eval_form, 1 as usize),
+            vec![Fq::from(2), Fq::from(10)]
+        );
+
+        let mut poly3 = get_test_poly3();
+
+        assert_eq!(
+            evaluate_at_two_vars(&mut poly3.eval_form, 1 as usize),
+            vec![Fq::from(3), Fq::from(7)]
+        );
+        let mut poly4 = get_test_poly4();
+        assert_eq!(
+            evaluate_at_two_vars(&mut poly4.eval_form, 1 as usize),
+            vec![Fq::from(0), Fq::from(5)]
+        );
+    }
+
+    #[test]
+    fn test_prove() {
+        let mut poly1 = get_test_poly();
+        let sum = get_sum_over_hypercube(&poly1.eval_form);
+        let proof = prove(&mut poly1, sum);
+        assert_eq!(proof.sum, Fq::from(10));
+    }
+    #[test]
+    fn test_partial_eval() {
+        let mut polynomial = MultilinearEvalForm::new(vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(3),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+            Fq::from(5),
+        ]);
+        let challenges = [Fq::from(1),Fq::from(2),Fq::from(3)];
+        for i in 1..=polynomial.number_of_variables {
+            let fl = polynomial.clone().partial_evaluate(i, Fq::from(0));
+            let sl = polynomial.clone().partial_evaluate(i, Fq::from(1));
+
+           let eval = polynomial.partial_evaluate(i, challenges[(i - 1) as usize]);
+        }
+    }
+    #[test]
+    fn test_prove2() {
+        let mut poly2 = get_test_poly2();
+        let sum = get_sum_over_hypercube(&poly2.eval_form);
+        let proof = prove(&mut poly2, sum);
+        assert_eq!(proof.sum, Fq::from(12));
+    }
+
+    #[test]
+    fn test_prove_and_verify_valid_proof() {
+        let mut poly1 = get_test_poly();
+        let sum = get_sum_over_hypercube(&poly1.eval_form);
+        let proof = prove(&mut poly1.clone(), sum);
+        let is_valid = verify(proof, &mut poly1);
+        assert_eq!(is_valid, true);
+    }
+
+    #[test]
+    fn test_prove_and_verify_valid_proof2() {
+        let mut poly2 = get_test_poly2();
+        let sum = get_sum_over_hypercube(&poly2.eval_form);
+        let proof = prove(&mut poly2.clone(), sum);
+        let is_valid = verify(proof, &mut poly2);
+        assert_eq!(is_valid, true);
+    }
+
+    #[test]
+    fn test_prove_and_verify_valid_proof_of_2vars() {
+        let mut poly3 = get_test_poly3();
+        let sum = get_sum_over_hypercube(&poly3.eval_form);
+        let proof = prove(&mut poly3.clone(), sum);
+        let is_valid = verify(proof, &mut poly3);
+        assert_eq!(is_valid, true);
+    }
+
+    #[test]
+    fn test_prove_and_verify_invalid_proof() {
+        let mut poly1 = get_test_poly();
+        let sum = Fq::from(100000); // guessed sum
+        let invalid_proof = prove(&mut poly1.clone(), sum); // invalid proof
+        let is_valid = verify(invalid_proof, &mut poly1);
+        assert_eq!(is_valid, false);
     }
 
     #[test]
@@ -457,6 +533,42 @@ mod tests {
         let claim_sum = prod_poly.reduce().iter().sum();
         let proof = prove_prod_poly(claim_sum, &mut prod_poly.clone());
         let is_valid = verify_prod_poly(proof, &mut prod_poly.clone());
-        assert_eq!(is_valid,true);
+        assert_eq!(is_valid, true);
+    }
+
+    #[test]
+    fn test_prove_and_verify_prod_poly2_invalid() {
+        let prod_poly = get_prod_poly2();
+        let invalid_claim_sum = Fq::from(1);
+        let invalid_proof = prove_prod_poly(invalid_claim_sum, &mut prod_poly.clone());
+        let is_valid = verify_prod_poly(invalid_proof, &mut prod_poly.clone());
+        assert_eq!(is_valid, false);
+    }
+
+    #[test]
+    fn test_prove_and_verify_sum_poly() {
+        let sum_poly = get_sum_of_prod_poly();
+        let claim_sum = sum_poly.reduce().iter().sum();
+        let proof = prove_sum_poly(claim_sum, &mut sum_poly.clone());
+        let is_valid = verify_sum_poly(proof, &mut sum_poly.clone());
+        assert_eq!(is_valid, true);
+    }
+
+    #[test]
+    fn test_prove_and_verify_sum_poly2() {
+        let sum_poly = get_sum_of_prod_poly2();
+        let claim_sum = sum_poly.reduce().iter().sum();
+        let proof = prove_sum_poly(claim_sum, &mut sum_poly.clone());
+        let is_valid = verify_sum_poly(proof, &mut sum_poly.clone());
+        assert_eq!(is_valid, true);
+    }
+
+    #[test]
+    fn test_prove_and_verify_sum_poly2_invalid() {
+        let sum_poly = get_sum_of_prod_poly2();
+        let invalid_claim_sum = Fq::from(10000000);
+        let invalid_proof = prove_sum_poly(invalid_claim_sum, &mut sum_poly.clone());
+        let is_valid = verify_sum_poly(invalid_proof, &mut sum_poly.clone());
+        assert_eq!(is_valid, false);
     }
 }
