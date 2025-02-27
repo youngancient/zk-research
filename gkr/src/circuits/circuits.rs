@@ -38,7 +38,8 @@ impl<F: PrimeField> Circuit<F> {
         if length <= layer_index || length == 0 {
             panic!("Compute circuit first!");
         }
-        MultilinearEvalForm::new(self.layer_evals[layer_index as usize].clone())
+        let layer_vec = &self.layer_evals[layer_index as usize];
+        MultilinearEvalForm::new(layer_vec.to_vec())
     }
 
     pub fn add_and_mul_i(
@@ -89,18 +90,19 @@ impl<F: PrimeField> Circuit<F> {
             MultilinearEvalForm::new(mul_eval_form),
         )
     }
-    pub fn f_b_c(
+
+    pub fn generate_f_b_c(
         add_i: MultilinearEvalForm<F>,
         mul_i: MultilinearEvalForm<F>,
         w_i: &MultilinearEvalForm<F>,
     ) -> SumPoly<F> {
         let add_prod_poly = ProdPoly::new(vec![
             add_i,
-            MultilinearEvalForm::add_or_mul(w_i, w_i, Op::Add),
+            MultilinearEvalForm::tensor_add_or_mul(w_i, w_i, Op::Add),
         ]);
         let mul_prod_poly = ProdPoly::new(vec![
             mul_i,
-            MultilinearEvalForm::add_or_mul(w_i, w_i, Op::Mul),
+            MultilinearEvalForm::tensor_add_or_mul(w_i, w_i, Op::Mul),
         ]);
         SumPoly {
             product_polys: vec![add_prod_poly, mul_prod_poly],

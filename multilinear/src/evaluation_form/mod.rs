@@ -112,6 +112,19 @@ impl<F: PrimeField> MultilinearEvalForm<F> {
         MultilinearEvalForm::new(result)
     }
 
+    pub fn tensor_add(
+        w_b: &MultilinearEvalForm<F>,
+        w_c: &MultilinearEvalForm<F>,
+    ) -> MultilinearEvalForm<F> {
+        MultilinearEvalForm::tensor_add_or_mul(w_b, w_c, Op::Add)
+    }
+
+    pub fn tensor_mul(
+        w_b: &MultilinearEvalForm<F>,
+        w_c: &MultilinearEvalForm<F>,
+    ) -> MultilinearEvalForm<F> {
+        MultilinearEvalForm::tensor_add_or_mul(w_b, w_c, Op::Mul)
+    }
     // converts polynimial from F -> list of bytes
     // use case:: fiat-shamir implementation
     pub fn to_bytes(polynomial: &Vec<F>) -> Vec<u8> {
@@ -314,6 +327,16 @@ impl<F: PrimeField> SumPoly<F> {
         // not sure if this is correct
         self.product_polys[0].no_of_vars
     }
+
+    // converts the sum of prod polynomial to bytes
+    // by calling the to_bytes method on each prod_poly and flat-mapping them into one single vec
+    pub fn to_bytes(&self) -> Vec<u8> {
+        // MultilinearEvalForm::to_bytes(&self.reduce())
+        self.product_polys
+            .iter()
+            .flat_map(|prod_poly| prod_poly.to_bytes())
+            .collect()
+    }
 }
 
 #[cfg(test)]
@@ -510,7 +533,7 @@ pub mod tests {
         let w_c =
             MultilinearEvalForm::new(vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(2)]);
         assert_eq!(
-            MultilinearEvalForm::tensor_add_or_mul(&w_b, &w_c, Op::Add).eval_form,
+            MultilinearEvalForm::tensor_add(&w_b, &w_c).eval_form,
             convert_to_fq_elements(vec![0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0, 2, 3, 3, 3, 5])
         );
     }
@@ -522,7 +545,7 @@ pub mod tests {
         let w_c =
             MultilinearEvalForm::new(vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(2)]);
         assert_eq!(
-            MultilinearEvalForm::tensor_add_or_mul(&w_b, &w_c, Op::Mul).eval_form,
+            MultilinearEvalForm::tensor_mul(&w_b, &w_c).eval_form,
             convert_to_fq_elements(vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6])
         );
     }
