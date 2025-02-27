@@ -215,7 +215,8 @@ pub fn verify_prod_poly<F: PrimeField>(proof: Proof<F>, prod_poly: &mut ProdPoly
 // bool -> if the round checks were successful
 // F -> the last claimed_sum
 // Vec<F> -> A list of all the random challenges (r)
-// partially verify both prod poly and sum poly
+
+// @note partially verify both prod poly and sum poly
 pub fn partial_verify_composite_poly<F: PrimeField>(
     transcript: &mut Transcript<F, Keccak256>,
     proof: Proof<F>,
