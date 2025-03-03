@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use crate::circuits::gates::{Gate, GateOperation};
 use crate::circuits::layers::Layer;
 use ark_ff::PrimeField;
@@ -5,14 +7,14 @@ use multilinear::evaluation_form::{combine_convert, MultilinearEvalForm, Op, Pro
 
 pub struct Circuit<F: PrimeField> {
     pub layers: Vec<Layer>,
-    pub layer_evals: Vec<Vec<F>>,
+    _data: PhantomData<F>,
 }
 
 impl<F: PrimeField> Circuit<F> {
     pub fn new(layers: Vec<Layer>) -> Self {
         Circuit {
             layers,
-            layer_evals: Vec::new(),
+            _data: PhantomData,
         }
     }
 
@@ -27,18 +29,17 @@ impl<F: PrimeField> Circuit<F> {
             let next_output = layer.evaluate(layer_evaluations.last().unwrap());
             layer_evaluations.push(next_output);
         }
-        self.layer_evals = layer_evaluations.iter().rev().cloned().collect();
-        layer_evaluations
+        layer_evaluations.iter().rev().cloned().collect()
     }
 
     // layer evaluation polynomial for layer_i
     // the top most layer is layer 0
-    pub fn w_mle(&self, layer_index: u32) -> MultilinearEvalForm<F> {
-        let length = self.layer_evals.len() as u32;
+    pub fn w_mle(layer_index: u32, layer_evaluations: &Vec<Vec<F>>) -> MultilinearEvalForm<F> {
+        let length = layer_evaluations.len() as u32;
         if length <= layer_index || length == 0 {
             panic!("Compute circuit first!");
         }
-        let layer_vec = &self.layer_evals[layer_index as usize];
+        let layer_vec = &layer_evaluations[layer_index as usize];
         MultilinearEvalForm::new(layer_vec.to_vec())
     }
 
@@ -197,6 +198,9 @@ mod test {
         assert_eq!(
             circuit_evaluation,
             vec![
+                vec![Fq::from(5060)],
+                vec![Fq::from(23), Fq::from(220)],
+                vec![Fq::from(6), Fq::from(17), Fq::from(20), Fq::from(11)],
                 vec![
                     Fq::from(2),
                     Fq::from(3),
@@ -206,10 +210,7 @@ mod test {
                     Fq::from(4),
                     Fq::from(3),
                     Fq::from(8),
-                ],
-                vec![Fq::from(6), Fq::from(17), Fq::from(20), Fq::from(11)],
-                vec![Fq::from(23), Fq::from(220)],
-                vec![Fq::from(5060)]
+                ]
             ]
         )
     }
@@ -227,18 +228,21 @@ mod test {
             Fq::from(7),
             Fq::from(8),
         ];
-        circuit_example.evaluate(&inputs);
-        assert_eq!(circuit_example.w_mle(0).eval_form, vec![Fq::from(88)]);
+        let layer_evaluations = circuit_example.evaluate(&inputs);
         assert_eq!(
-            circuit_example.w_mle(1).eval_form,
+            Circuit::w_mle(0, &layer_evaluations).eval_form,
+            vec![Fq::from(88)]
+        );
+        assert_eq!(
+            Circuit::w_mle(1, &layer_evaluations).eval_form,
             vec![Fq::from(21), Fq::from(67)]
         );
         assert_eq!(
-            circuit_example.w_mle(2).eval_form,
+            Circuit::w_mle(2, &layer_evaluations).eval_form,
             vec![Fq::from(3), Fq::from(7), Fq::from(11), Fq::from(56)]
         );
         assert_eq!(
-            circuit_example.w_mle(3).eval_form,
+            Circuit::w_mle(3, &layer_evaluations).eval_form,
             vec![
                 Fq::from(1),
                 Fq::from(2),
@@ -252,7 +256,7 @@ mod test {
         );
 
         assert_eq!(
-            circuit_example.w_mle(1).evaluate(&vec![Fq::from(0)]),
+            Circuit::w_mle(1, &layer_evaluations).evaluate(&vec![Fq::from(0)]),
             Fq::from(21)
         );
     }
