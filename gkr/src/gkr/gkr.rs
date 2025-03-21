@@ -14,7 +14,7 @@ pub fn gkr_prover<F: PrimeField>(circuit: Circuit<F>, inputs: Vec<F>) -> Proof {
     // sends output polynomial, w0(a) of circuit evaluation to the verifier (i.e commit to transcript)
     // generate random challenge from transcript
     // evaluate w0(a) at r -> w0(r)
-
+    
     todo!()
 }
 
