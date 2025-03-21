@@ -2,6 +2,7 @@ use std::marker::PhantomData;
 
 use ark_ff::PrimeField;
 use sha3::{Digest, Keccak256};
+
 pub struct Transcript<F: PrimeField, T: HasherTrait> {
     hasher: T,
     f_element: PhantomData<F>,
